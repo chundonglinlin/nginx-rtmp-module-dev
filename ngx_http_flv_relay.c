@@ -25,6 +25,254 @@ static ngx_http_status_code_t ngx_http_relay_status_code[] = {
 };
 
 static ngx_int_t
+ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
+{
+    u_char                      ch, *p, *pc;
+    ngx_rtmp_stream_t          *st;
+    ngx_rtmp_header_t          *h;
+    ngx_chain_t               **ll;
+    size_t                      len;
+    ngx_rtmp_core_srv_conf_t   *cscf;
+    ngx_int_t                   rc = NGX_AGAIN;
+    enum {
+        qq_flv_usize0 = 0,
+        qq_flv_usize1,
+        qq_flv_usize2,
+        qq_flv_usize3,
+        qq_flv_huheadersize0,
+        qq_flv_huheadersize1,
+        qq_flv_huversion0,
+        qq_flv_huversion1,
+        qq_flv_uctype,
+        qq_flv_uckeyframe,
+        qq_flv_usec0,
+        qq_flv_usec1,
+        qq_flv_usec2,
+        qq_flv_usec3,
+        qq_flv_useq0,
+        qq_flv_useq1,
+        qq_flv_useq2,
+        qq_flv_useq3,
+        qq_flv_usegid0,
+        qq_flv_usegid1,
+        qq_flv_usegid2,
+        qq_flv_usegid3,
+        qq_flv_ucheck0,
+        qq_flv_ucheck1,
+        qq_flv_ucheck2,
+        qq_flv_ucheck3,
+        qq_flv_data
+    } state;
+
+    state = s->qq_flv_state;
+    cscf = ngx_rtmp_get_module_srv_conf(s, ngx_rtmp_core_module);
+
+    for (p = b->pos; p < b->last; ++p) {
+        ch = *p;
+
+        switch (state) {
+
+        case qq_flv_usize0:
+            pc = (u_char *) &s->qq_flv_usize;
+            pc[3] = ch;
+            state = qq_flv_usize1;
+            break;
+
+        case qq_flv_usize1:
+            pc = (u_char *) &s->qq_flv_usize;
+            pc[2] = ch;
+            state = qq_flv_usize2;
+            break;
+
+        case qq_flv_usize2:
+            pc = (u_char *) &s->qq_flv_usize;
+            pc[1] = ch;
+            state = qq_flv_usize3;
+            break;
+
+        case qq_flv_usize3:
+            pc = (u_char *) &s->qq_flv_usize;
+            pc[0] = ch;
+            state = qq_flv_huheadersize0;
+            break;
+
+        case qq_flv_huheadersize0:
+            pc = (u_char *) &s->qq_flv_huheadersize;
+            pc[1] = ch;
+            state = qq_flv_huheadersize1;
+            break;
+
+        case qq_flv_huheadersize1:
+            pc = (u_char *) &s->qq_flv_huheadersize;
+            pc[0] = ch;
+            state = qq_flv_huversion0;
+            break;
+
+        case qq_flv_huversion0:
+            pc = (u_char *) &s->qq_flv_huversion;
+            pc[1] = ch;
+            state = qq_flv_huversion1;
+            break;
+
+        case qq_flv_huversion1:
+            pc = (u_char *) &s->qq_flv_huversion;
+            pc[1] = ch;
+            state = qq_flv_uctype;
+            break;
+
+        case qq_flv_uctype:
+            s->qq_flv_uctype = ch;
+            state = qq_flv_uckeyframe;
+            break;
+
+        case qq_flv_uckeyframe:
+            s->qq_flv_uckeyframe = ch;
+            state = qq_flv_usec0;
+            break;
+
+        case qq_flv_usec0:
+            pc = (u_char *) &s->qq_flv_usec;
+            pc[3] = ch;
+            state = qq_flv_usec1;
+            break;
+
+        case qq_flv_usec1:
+            pc = (u_char *) &s->qq_flv_usec;
+            pc[3] = ch;
+            state = qq_flv_usec2;
+            break;
+
+        case qq_flv_usec2:
+            pc = (u_char *) &s->qq_flv_usec;
+            pc[3] = ch;
+            state = qq_flv_usec3;
+            break;
+
+        case qq_flv_usec3:
+            pc = (u_char *) &s->qq_flv_usec;
+            pc[3] = ch;
+            state = qq_flv_useq0;
+            break;
+
+        case qq_flv_useq0:
+            pc = (u_char *) &s->qq_flv_useq;
+            pc[3] = ch;
+            state = qq_flv_useq1;
+            break;
+
+        case qq_flv_useq1:
+            pc = (u_char *) &s->qq_flv_useq;
+            pc[3] = ch;
+            state = qq_flv_useq2;
+            break;
+
+        case qq_flv_useq2:
+            pc = (u_char *) &s->qq_flv_useq;
+            pc[3] = ch;
+            state = qq_flv_useq3;
+            break;
+
+        case qq_flv_useq3:
+            pc = (u_char *) &s->qq_flv_useq;
+            pc[3] = ch;
+            state = qq_flv_usegid0;
+            break;
+
+        case qq_flv_usegid0:
+            pc = (u_char *) &s->qq_flv_usegid;
+            pc[3] = ch;
+            state = qq_flv_usegid1;
+            break;
+
+        case qq_flv_usegid1:
+            pc = (u_char *) &s->qq_flv_usegid;
+            pc[3] = ch;
+            state = qq_flv_usegid2;
+            break;
+
+        case qq_flv_usegid2:
+            pc = (u_char *) &s->qq_flv_usegid;
+            pc[3] = ch;
+            state = qq_flv_usegid3;
+            break;
+
+        case qq_flv_usegid3:
+            pc = (u_char *) &s->qq_flv_usegid;
+            pc[3] = ch;
+            state = qq_flv_ucheck0;
+            break;
+
+        case qq_flv_ucheck0:
+            pc = (u_char *) &s->qq_flv_ucheck;
+            pc[3] = ch;
+            state = qq_flv_ucheck1;
+            break;
+
+        case qq_flv_ucheck1:
+            pc = (u_char *) &s->qq_flv_ucheck;
+            pc[3] = ch;
+            state = qq_flv_ucheck2;
+            break;
+
+        case qq_flv_ucheck2:
+            pc = (u_char *) &s->qq_flv_ucheck;
+            pc[3] = ch;
+            state = qq_flv_ucheck3;
+            break;
+
+        case qq_flv_ucheck3:
+            pc = (u_char *) &s->qq_flv_ucheck;
+            pc[3] = ch;
+            state = qq_flv_data;
+            break;
+
+        case qq_flv_data:
+            st = &s->in_streams[0];
+
+            for (ll = &st->in; (*ll) && (*ll)->buf->last == (*ll)->buf->end;
+                    ll = &(*ll)->next);
+
+            for (;;) {
+                if (*ll == NULL) {
+                    *ll = ngx_get_chainbuf(cscf->chunk_size, 1);
+                }
+
+                len = ngx_min(st->len, b->last - p);
+                if ((*ll)->buf->end - (*ll)->buf->last >= (long) len) {
+                    (*ll)->buf->last = ngx_cpymem((*ll)->buf->last, p, len);
+                    p += len;
+                    st->len -= len;
+
+                    break;
+                }
+
+                len = (*ll)->buf->end - (*ll)->buf->last;
+                (*ll)->buf->last = ngx_cpymem((*ll)->buf->last, p, len);
+                p += len;
+                st->len -= len;
+
+                ll = &(*ll)->next;
+            }
+
+            if (st->len != 0) {
+                rc = NGX_AGAIN;
+                goto done;
+            }
+
+            state = flv_tagsize0;
+            rc = NGX_OK;
+            goto done;
+        }
+    }
+
+done:
+    b->pos = p;
+    s->qq_flv_state = state;
+
+    return rc;
+}
+
+static ngx_int_t
 ngx_http_relay_parse_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
 {
     u_char                      ch, *p, *pc;
