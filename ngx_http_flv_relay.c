@@ -564,7 +564,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
 
             if (st->qq_len != 0) {
                 state = flv_tagsize0;
-                rc = NGX_AGAIN;
+                rc = NGX_OK;
                 goto done;
             }
 
