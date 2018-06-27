@@ -279,6 +279,8 @@ struct ngx_rtmp_session_s {
     uint64_t                        flv_recv_bytes;
 
     /* for qq flv header */
+    uint32_t                        qq_flv_len;
+
     uint32_t                        qq_flv_usize;
     uint16_t                        qq_flv_huheadersize;
     uint16_t                        qq_flv_huversion;

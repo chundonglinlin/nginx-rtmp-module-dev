@@ -119,8 +119,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
         case qq_flv_usize3:
             pc = (u_char *) &s->qq_flv_usize;
             pc[3] = ch;
-            st = &s->in_streams[0];
-            st->qq_len = s->qq_flv_usize;
+            s->qq_flv_len = s->qq_flv_usize;
             state = qq_flv_huheadersize0;
             break;
 
@@ -282,8 +281,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
                 rc = NGX_ERROR;
                 goto done;
             }
-            st = &s->in_streams[0];
-            st->qq_len--;
+            s->qq_flv_len--;
             break;
 
         case flv_header_FL:
@@ -295,8 +293,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
                 rc = NGX_ERROR;
                 goto done;
             }
-            st = &s->in_streams[0];
-            st->qq_len--;
+            s->qq_flv_len--;
             break;
 
         case flv_header_FLV:
@@ -308,8 +305,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
                 rc = NGX_ERROR;
                 goto done;
             }
-            st = &s->in_streams[0];
-            st->qq_len--;
+            s->qq_flv_len--;
             break;
 
         case flv_header_Version:
@@ -318,47 +314,41 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
                 rc = NGX_ERROR;
                 goto done;
             }
-            st = &s->in_streams[0];
-            st->qq_len--;
+            s->qq_flv_len--;
             state = flv_header_Flags;
             break;
 
         case flv_header_Flags:
             s->flv_flags = ch;
-            st = &s->in_streams[0];
-            st->qq_len--;
+            s->qq_flv_len--;
             state = flv_header_DataOffset0;
             break;
 
         case flv_header_DataOffset0:
             pc = (u_char *) &s->flv_data_offset;
             pc[3] = ch;
-            st = &s->in_streams[0];
-            st->qq_len--;
+            s->qq_flv_len--;
             state = flv_header_DataOffset1;
             break;
 
         case flv_header_DataOffset1:
             pc = (u_char *) &s->flv_data_offset;
             pc[2] = ch;
-            st = &s->in_streams[0];
-            st->qq_len--;
+            s->qq_flv_len--;
             state = flv_header_DataOffset2;
             break;
 
         case flv_header_DataOffset2:
             pc = (u_char *) &s->flv_data_offset;
             pc[1] = ch;
-            st = &s->in_streams[0];
-            st->qq_len--;
+            s->qq_flv_len--;
             state = flv_header_DataOffset3;
             break;
 
         case flv_header_DataOffset3:
             pc = (u_char *) &s->flv_data_offset;
             pc[0] = ch;
-            st = &s->in_streams[0];
-            st->qq_len--;
+            s->qq_flv_len--;
             state = flv_tagsize0;
             break;
 
@@ -366,24 +356,21 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
             s->flv_tagsize = 0;
             pc = (u_char *) &s->flv_tagsize;
             pc[3] = ch;
-            st = &s->in_streams[0];
-            st->qq_len--;
+            s->qq_flv_len--;
             state = flv_tagsize1;
             break;
 
         case flv_tagsize1:
             pc = (u_char *) &s->flv_tagsize;
             pc[2] = ch;
-            st = &s->in_streams[0];
-            st->qq_len--;
+            s->qq_flv_len--;
             state = flv_tagsize2;
             break;
 
         case flv_tagsize2:
             pc = (u_char *) &s->flv_tagsize;
             pc[1] = ch;
-            st = &s->in_streams[0];
-            st->qq_len--;
+            s->qq_flv_len--;
             state = flv_tagsize3;
             break;
 
@@ -405,8 +392,8 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
                     goto done;
                 }
             }
-            st->qq_len--;
-            if (st->qq_len != 0) {
+            s->qq_flv_len--;
+            if (s->qq_flv_len != 0) {
                 state = flv_tagtype;
             }else {
                 state = qq_flv_usize0;
@@ -426,7 +413,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
             h = &st->hdr;
             h->type = ch;
             state = flv_datasize0;
-            st->qq_len--;
+            s->qq_flv_len--;
             break;
 
         case flv_datasize0:
@@ -437,7 +424,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
 
             pc[2] = ch;
             state = flv_datasize1;
-            st->qq_len--;
+            s->qq_flv_len--;
             break;
 
         case flv_datasize1:
@@ -447,7 +434,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
 
             pc[1] = ch;
             state = flv_datasize2;
-            st->qq_len--;
+            s->qq_flv_len--;
             break;
 
         case flv_datasize2:
@@ -458,7 +445,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
             pc[0] = ch;
             state = flv_timestamp0;
             st->len = h->mlen;
-            st->qq_len--;
+            s->qq_flv_len--;
             break;
 
         case flv_timestamp0:
@@ -468,7 +455,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
 
             pc[2] = ch;
             state = flv_timestamp1;
-            st->qq_len--;
+            s->qq_flv_len--;
             break;
 
         case flv_timestamp1:
@@ -478,7 +465,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
 
             pc[1] = ch;
             state = flv_timestamp2;
-            st->qq_len--;
+            s->qq_flv_len--;
             break;
 
         case flv_timestamp2:
@@ -488,7 +475,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
 
             pc[0] = ch;
             state = flv_timestamp_extended;
-            st->qq_len--;
+            s->qq_flv_len--;
             break;
 
         case flv_timestamp_extended:
@@ -498,7 +485,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
 
             pc[3] = ch;
             state = flv_streamid0;
-            st->qq_len--;
+            s->qq_flv_len--;
             break;
 
         case flv_streamid0:
@@ -509,7 +496,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
 
             pc[2] = ch;
             state = flv_streamid1;
-            st->qq_len--;
+            s->qq_flv_len--;
             break;
 
         case flv_streamid1:
@@ -519,7 +506,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
 
             pc[1] = ch;
             state = flv_streamid2;
-            st->qq_len--;
+            s->qq_flv_len--;
             break;
 
         case flv_streamid2:
@@ -529,7 +516,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
 
             pc[0] = ch;
             state = flv_data;
-            st->qq_len--;
+            s->qq_flv_len--;
             break;
 
         case flv_data:
@@ -544,12 +531,12 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
                 }
 
                 len = ngx_min(st->len, b->last - p);
-                len = ngx_min(st->qq_len, len);
+                len = ngx_min(s->qq_flv_len, len);
                 if ((*ll)->buf->end - (*ll)->buf->last >= (long) len) {
                     (*ll)->buf->last = ngx_cpymem((*ll)->buf->last, p, len);
                     p += len;
                     st->len -= len;
-                    st->qq_len -= len;
+                    s->qq_flv_len -= len;
                     break;
                 }
 
@@ -557,7 +544,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
                 (*ll)->buf->last = ngx_cpymem((*ll)->buf->last, p, len);
                 p += len;
                 st->len -= len;
-                st->qq_len -= len;
+                s->qq_flv_len -= len;
                 ll = &(*ll)->next;
             }
 
@@ -566,7 +553,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
                 goto done;
             }
 
-            if (st->qq_len != 0) {
+            if (s->qq_flv_len != 0) {
                 state = flv_tagsize0;
                 rc = NGX_OK;
                 goto done;
