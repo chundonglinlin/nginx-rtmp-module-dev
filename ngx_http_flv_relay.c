@@ -569,6 +569,21 @@ done:
     b->pos = p;
     s->qq_flv_state = state;
 
+    /* qq flv header */
+    if (rc == NGX_OK) {
+        st = &s->in_streams[0];
+        h = &st->hdr;
+        h->qq_flv_usize = s->qq_flv_usize;
+        h->qq_flv_huheadersize = s->qq_flv_huheadersize;
+        h->qq_flv_huversion = s->qq_flv_huversion;
+        h->qq_flv_uctype = s->qq_flv_uctype;
+        h->qq_flv_uckeyframe = s->qq_flv_uckeyframe;
+        h->qq_flv_usec = s->qq_flv_usec;
+        h->qq_flv_useq = s->qq_flv_useq;
+        h->qq_flv_usegid = s->qq_flv_usegid;
+        h->qq_flv_ucheck = s->qq_flv_ucheck;
+    }
+
     return rc;
 }
 
