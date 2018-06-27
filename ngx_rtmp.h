@@ -278,6 +278,17 @@ struct ngx_rtmp_session_s {
     unsigned                        flv_tagsize;
     uint64_t                        flv_recv_bytes;
 
+    /* for qq flv header */
+    uint32_t                        qq_flv_usize;
+    uint16_t                        qq_flv_huheadersize;
+    uint16_t                        qq_flv_huversion;
+    uint8_t                         qq_flv_uctype;
+    uint8_t                         qq_flv_uckeyframe;
+    uint32_t                        qq_flv_usec;
+    uint32_t                        qq_flv_useq;
+    uint32_t                        qq_flv_usegid;
+    uint32_t                        qq_flv_ucheck;
+
     /* groupid for notify|control*/
     ngx_str_t                       groupid;
 
