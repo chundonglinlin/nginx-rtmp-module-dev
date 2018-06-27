@@ -406,7 +406,11 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
                 }
             }
             st->qq_len--;
-            state = flv_tagtype;
+            if (st->qq_len != 0) {
+                state = flv_tagtype;
+            }else {
+                state = qq_flv_usize0;
+            }            
 
             break;
 
