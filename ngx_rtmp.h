@@ -292,6 +292,7 @@ struct ngx_rtmp_session_s {
 
     /* for qq flv header */
     uint32_t                        qq_flv_len;
+    unsigned                        qq_flv_state;
 
     uint32_t                        qq_flv_usize;
     uint16_t                        qq_flv_huheadersize;
