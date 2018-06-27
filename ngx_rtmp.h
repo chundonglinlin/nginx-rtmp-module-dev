@@ -120,6 +120,18 @@ typedef struct {
     uint32_t                mlen;       /* message length */
     uint8_t                 type;       /* message type id */
     uint32_t                msid;       /* message stream id */
+
+    /* qq flv header */
+    uint32_t                        qq_flv_usize;
+    uint16_t                        qq_flv_huheadersize;
+    uint16_t                        qq_flv_huversion;
+    uint8_t                         qq_flv_uctype;
+    uint8_t                         qq_flv_uckeyframe;
+    uint32_t                        qq_flv_usec;
+    uint32_t                        qq_flv_useq;
+    uint32_t                        qq_flv_usegid;
+    uint32_t                        qq_flv_ucheck;
+
 } ngx_rtmp_header_t;
 
 
