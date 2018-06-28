@@ -893,7 +893,7 @@ ngx_rtmp_record_write_qq_flv_index(ngx_rtmp_session_t *s,
     NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, h->qq_flv_usegid);
     NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, h->qq_flv_ucheck);
     NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, rctx->file.offset);
-  #undef
+  #undef NGX_RTMP_RECORD_QQ_FLV_HEADER
 
     if (ngx_write_file(&rctx->index_file, hdr, 34, rctx->index_file.offset)
         == NGX_ERROR)
