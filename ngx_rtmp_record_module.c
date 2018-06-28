@@ -895,7 +895,7 @@ ngx_rtmp_record_write_qq_flv_index(ngx_rtmp_session_t *s,
     NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, rctx->file.offset);
   #undef
 
-    if (ngx_write_file(&rctx->index_file, hdr, ph - hdr, rctx->index_file.offset)
+    if (ngx_write_file(&rctx->index_file, hdr, 34, rctx->index_file.offset)
         == NGX_ERROR)
     {
         ngx_rtmp_record_notify_error(s, rctx);
@@ -904,6 +904,8 @@ ngx_rtmp_record_write_qq_flv_index(ngx_rtmp_session_t *s,
 
         return NGX_ERROR;
     }
+
+    rctx->qq_flv_useq = h->qq_flv_useq;
 
     return NGX_OK;
 }
