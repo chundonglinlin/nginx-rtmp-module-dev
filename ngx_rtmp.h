@@ -113,6 +113,10 @@ typedef struct {
  * + max 4  extended header (timestamp) */
 #define NGX_RTMP_MAX_CHUNK_HEADER       18
 
+#define NGX_RTMP_HEADER_TYPE_DEFAULT    0
+#define NGX_RTMP_HEADER_TYPE_QQ_FLV     1
+#define NGX_RTMP_HEADER_TYPE_QQ_HLS     2
+
 typedef struct {
     uint32_t                        usize;                   //大小(数据部分大小)
     uint16_t                        huheadersize;            //本数据结构头的大小，为26
@@ -132,6 +136,7 @@ typedef struct {
     uint8_t                 type;       /* message type id */
     uint32_t                msid;       /* message stream id */    
     ngx_qq_flv_header_t     qqflvhdr;   /* qq flv header */
+    ngx_flag_t              qqhdrtype;  /* qq header type */
     uint32_t                expiredtime;/* record deadline */
 
 } ngx_rtmp_header_t;
