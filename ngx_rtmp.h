@@ -114,15 +114,15 @@ typedef struct {
 #define NGX_RTMP_MAX_CHUNK_HEADER       18
 
 typedef struct {
-    uint32_t                        qq_flv_usize;                   //大小(数据部分大小)
-    uint16_t                        qq_flv_huheadersize;            //本数据结构头的大小，为26
-    uint16_t                        qq_flv_huversion;               //版本号,一般为0
-    uint8_t                         qq_flv_uctype;                  //类型
-    uint8_t                         qq_flv_uckeyframe;              //标识是不是关键帧，0-flv头，1-普通帧，2-关键帧
-    uint32_t                        qq_flv_usec;                    //时间戳 时间(秒)
-    uint32_t                        qq_flv_useq;                    //序号，每一帧本序号加一，flv头帧序号为0
-    uint32_t                        qq_flv_usegid;                  //段ID，确保全局唯一或者其代表的flv头是唯一的
-    uint32_t                        qq_flv_ucheck;                  //校验和，本结构体后面数据内容的校验和
+    uint32_t                        usize;                   //大小(数据部分大小)
+    uint16_t                        huheadersize;            //本数据结构头的大小，为26
+    uint16_t                        huversion;               //版本号,一般为0
+    uint8_t                         uctype;                  //类型
+    uint8_t                         uckeyframe;              //标识是不是关键帧，0-flv头，1-普通帧，2-关键帧
+    uint32_t                        usec;                    //时间戳 时间(秒)
+    uint32_t                        useq;                    //序号，每一帧本序号加一，flv头帧序号为0
+    uint32_t                        usegid;                  //段ID，确保全局唯一或者其代表的flv头是唯一的
+    uint32_t                        ucheck;                  //校验和，本结构体后面数据内容的校验和
 } ngx_qq_flv_header_t;
 
 typedef struct {
