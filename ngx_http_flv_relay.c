@@ -30,6 +30,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
     u_char                      ch, *p, *pc;
     ngx_rtmp_stream_t          *st;
     ngx_rtmp_header_t          *h;
+    ngx_qq_flv_header_t        *qqflvhdr;
     ngx_chain_t               **ll;
     size_t                      len;
     ngx_rtmp_core_srv_conf_t   *cscf;
