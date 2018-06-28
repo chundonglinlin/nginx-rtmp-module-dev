@@ -451,11 +451,10 @@ ngx_rtmp_record_index_open(ngx_rtmp_session_t *s,
     //ngx_str_set(&rctx->index_file.name, "recorded");
     if (rctx->index_file.fd == NGX_INVALID_FILE) {
         err = ngx_errno;
-        /*if (err != NGX_ENOENT) {
+        if (err != NGX_ENOENT) {
             ngx_log_error(NGX_LOG_CRIT, s->connection->log, err,
-                          "record: %V failed to open file '%V'",
                           &rracf->id, &path);
-        }*/
+        }
         return NGX_OK;
     }
 
@@ -908,11 +907,20 @@ ngx_rtmp_record_node_close(ngx_rtmp_session_t *s,
 
         ngx_rtmp_record_notify_error(s, rctx);
     }
-
+    
     rctx->file.fd = NGX_INVALID_FILE;
-
+    
     ngx_log_debug1(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
                    "record: %V closed", &rracf->id);
+
+    if (ngx_close_file(rctx->index_file.fd) == NGX_FILE_ERROR) {
+        err = ngx_errno;
+        ngx_log_error(NGX_LOG_CRIT, s->connection->log, err,
+                      "record: %V error closing file", &rracf->id);
+    }
+
+    rctx->index_file.fd = NGX_INVALID_FILE;
+
 
     if (rracf->notify) {
         ngx_rtmp_send_status(s, "NetStream.Record.Stop", "status",
