@@ -132,6 +132,7 @@ typedef struct {
     uint8_t                 type;       /* message type id */
     uint32_t                msid;       /* message stream id */    
     ngx_qq_flv_header_t     qqflvhdr;   /* qq flv header */
+    uint32_t                expiredtime;/* record deadline */
 
 } ngx_rtmp_header_t;
 

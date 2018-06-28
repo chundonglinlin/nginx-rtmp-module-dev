@@ -19,6 +19,7 @@
 #define NGX_RTMP_RECORD_KEYFRAMES       0x08
 #define NGX_RTMP_RECORD_MANUAL          0x10
 
+#define NGX_QQ_FLV_INDEX_SIZE           39
 
 typedef struct {
     ngx_str_t                           id;
