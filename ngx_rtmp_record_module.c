@@ -487,11 +487,11 @@ ngx_rtmp_record_index_open(ngx_rtmp_session_t *s,
         goto done;
     }
 
-    if (file_size % 35 != 0) {
-        u_char edr[34];
+    if (file_size % NGX_QQ_FLV_INDEX_SIZE != 0) {
+        u_char edr[NGX_QQ_FLV_INDEX_SIZE - 1];
         ngx_memzero(edr, sizeof(edr));
         rctx->index_file.offset = file_size;
-        ngx_write_file(&rctx->index_file, edr, file_size % 35, rctx->index_file.offset);
+        ngx_write_file(&rctx->index_file, edr, file_size % NGX_QQ_FLV_INDEX_SIZE, rctx->index_file.offset);
         file_size = rctx->index_file.offset;
     }
 
@@ -499,12 +499,7 @@ done:
 
     rctx->index_file.offset = file_size;
 
-    //ngx_log_debug3(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
-    //               "record: append offset=%O, time=%uD, tag_size=%uD",
-    //               file_size, timestamp, tag_size);
-
     return NGX_OK;
-
 }
 
 
