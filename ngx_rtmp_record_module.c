@@ -435,20 +435,16 @@ ngx_rtmp_record_index_open(ngx_rtmp_session_t *s,
                            ngx_rtmp_record_rec_ctx_t *rctx, ngx_str_t *path)
 {
     ngx_rtmp_record_app_conf_t *rracf;
-    ngx_int_t                   mode, create_mode;
     off_t                       file_size;
-
 
     rracf = rctx->conf;
 
-    mode = NGX_FILE_RDWR;
-    create_mode = NGX_FILE_CREATE_OR_OPEN;
     ngx_memzero(&rctx->index_file, sizeof(rctx->index_file));
     rctx->index_file.offset = 0;
     rctx->index_file.log = s->connection->log;
-    rctx->index_file.fd = ngx_open_file(path.data, mode, create_mode,
+    rctx->index_file.fd = ngx_open_file(path.data, NGX_FILE_RDWR, NGX_FILE_CREATE_OR_OPEN,
                                         NGX_FILE_DEFAULT_ACCESS);
-    //ngx_str_set(&rctx->index_file.name, "recorded");
+    ngx_str_set(&rctx->index_file.name, "indexed");
     if (rctx->index_file.fd == NGX_INVALID_FILE) {
         err = ngx_errno;
         if (err != NGX_ENOENT) {
@@ -908,7 +904,7 @@ ngx_rtmp_record_node_close(ngx_rtmp_session_t *s,
 
         ngx_rtmp_record_notify_error(s, rctx);
     }
-    
+
     rctx->file.fd = NGX_INVALID_FILE;
     
     ngx_log_debug1(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
