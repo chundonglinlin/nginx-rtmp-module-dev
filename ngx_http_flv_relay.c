@@ -99,165 +99,191 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
         switch (state) {
 
         case qq_flv_usize0:
-            s->qq_flv_usize = 0;
-            pc = (u_char *) &s->qq_flv_usize;
+            qqflvhdr = &s->qqflvhdr;            
+            qqflvhdr->usize = 0;
+            pc = (u_char *) &qqflvhdr->usize;
             pc[0] = ch;
             state = qq_flv_usize1;
             break;
 
         case qq_flv_usize1:
-            pc = (u_char *) &s->qq_flv_usize;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usize;
             pc[1] = ch;
             state = qq_flv_usize2;
             break;
 
         case qq_flv_usize2:
-            pc = (u_char *) &s->qq_flv_usize;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usize;
             pc[2] = ch;
             state = qq_flv_usize3;
             break;
 
         case qq_flv_usize3:
-            pc = (u_char *) &s->qq_flv_usize;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usize;
             pc[3] = ch;
             s->qq_flv_len = s->qq_flv_usize;
             state = qq_flv_huheadersize0;
             break;
 
         case qq_flv_huheadersize0:
-            s->qq_flv_huheadersize = 0;
-            pc = (u_char *) &s->qq_flv_huheadersize;
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->huheadersize = 0;
+            pc = (u_char *) &qqflvhdr->huheadersize;
             pc[0] = ch;
             state = qq_flv_huheadersize1;
             break;
 
         case qq_flv_huheadersize1:
-            pc = (u_char *) &s->qq_flv_huheadersize;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->huheadersize;
             pc[1] = ch;
             state = qq_flv_huversion0;
             break;
 
         case qq_flv_huversion0:
-            s->qq_flv_huversion = 0;
-            pc = (u_char *) &s->qq_flv_huversion;
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->huversion = 0;
+            pc = (u_char *) &qqflvhdr->huversion;
             pc[0] = ch;
             state = qq_flv_huversion1;
             break;
 
         case qq_flv_huversion1:
-            pc = (u_char *) &s->qq_flv_huversion;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->huversion;
             pc[1] = ch;
             state = qq_flv_uctype;
             break;
 
         case qq_flv_uctype:
-            s->qq_flv_uctype = ch;
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->uctype = ch;
             state = qq_flv_uckeyframe;
             break;
 
         case qq_flv_uckeyframe:
-            s->qq_flv_uckeyframe = ch;
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->uckeyframe = ch;
             state = qq_flv_usec0;
             break;
 
         case qq_flv_usec0:
-            s->qq_flv_usec = 0;
-            pc = (u_char *) &s->qq_flv_usec;
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->usec = 0;
+            pc = (u_char *) &qqflvhdr->usec;
             pc[0] = ch;
             state = qq_flv_usec1;
             break;
 
         case qq_flv_usec1:
-            pc = (u_char *) &s->qq_flv_usec;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usec;
             pc[1] = ch;
             state = qq_flv_usec2;
             break;
 
         case qq_flv_usec2:
-            pc = (u_char *) &s->qq_flv_usec;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usec;
             pc[2] = ch;
             state = qq_flv_usec3;
             break;
 
         case qq_flv_usec3:
-            pc = (u_char *) &s->qq_flv_usec;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usec;
             pc[3] = ch;
             state = qq_flv_useq0;
             break;
 
         case qq_flv_useq0:
-            s->qq_flv_useq = 0;
-            pc = (u_char *) &s->qq_flv_useq;
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->useq = 0;
+            pc = (u_char *) &qqflvhdr->useq;
             pc[0] = ch;
             state = qq_flv_useq1;
             break;
 
         case qq_flv_useq1:
-            pc = (u_char *) &s->qq_flv_useq;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->useq;
             pc[1] = ch;
             state = qq_flv_useq2;
             break;
 
         case qq_flv_useq2:
-            pc = (u_char *) &s->qq_flv_useq;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->useq;
             pc[2] = ch;
             state = qq_flv_useq3;
             break;
 
         case qq_flv_useq3:
-            pc = (u_char *) &s->qq_flv_useq;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->useq;
             pc[3] = ch;
             state = qq_flv_usegid0;
             break;
 
         case qq_flv_usegid0:
-            s->qq_flv_usegid = 0;
-            pc = (u_char *) &s->qq_flv_usegid;
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->usegid = 0;
+            pc = (u_char *) &qqflvhdr->usegid;
             pc[0] = ch;
             state = qq_flv_usegid1;
             break;
 
         case qq_flv_usegid1:
-            pc = (u_char *) &s->qq_flv_usegid;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usegid;
             pc[1] = ch;
             state = qq_flv_usegid2;
             break;
 
         case qq_flv_usegid2:
-            pc = (u_char *) &s->qq_flv_usegid;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usegid;
             pc[2] = ch;
             state = qq_flv_usegid3;
             break;
 
         case qq_flv_usegid3:
-            pc = (u_char *) &s->qq_flv_usegid;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usegid;
             pc[3] = ch;
             state = qq_flv_ucheck0;
             break;
 
         case qq_flv_ucheck0:
-            s->qq_flv_ucheck = 0;
-            pc = (u_char *) &s->qq_flv_ucheck;
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->ucheck = 0;
+            pc = (u_char *) &qqflvhdr->ucheck;
             pc[0] = ch;
             state = qq_flv_ucheck1;
             break;
 
         case qq_flv_ucheck1:
-            pc = (u_char *) &s->qq_flv_ucheck;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->ucheck;
             pc[1] = ch;
             state = qq_flv_ucheck2;
             break;
 
         case qq_flv_ucheck2:
-            pc = (u_char *) &s->qq_flv_ucheck;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->ucheck;
             pc[2] = ch;
             state = qq_flv_ucheck3;
             break;
 
         case qq_flv_ucheck3:
-            pc = (u_char *) &s->qq_flv_ucheck;
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->ucheck;
             pc[3] = ch;
-            switch (s->qq_flv_uckeyframe) {
+            switch (qqflvhdr->uckeyframe) {
             case 0:
                 state = flv_header_F;
                 break;
