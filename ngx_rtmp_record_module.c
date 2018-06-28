@@ -872,12 +872,16 @@ ngx_rtmp_record_write_qq_flv_index(ngx_rtmp_session_t *s,
                             ngx_rtmp_record_rec_ctx_t *rctx,
                             ngx_rtmp_header_t *h)
 {
+    if (rctx->qq_flv_useq == h->qq_flv_useq) {
+        return NGX_OK;
+    }
+
     u_char                      hdr[34], *p, *ph;
     ph = hdr;
   #define NGX_RTMP_RECORD_QQ_FLV_HEADER(target, var)                              \
     p = (u_char*)&var;                                                            \
     for (i=0; i<sizeof(var); i++)                                                 \
-      *target++ = p[i];
+        *target++ = p[i];
 
     NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, h->qq_flv_usize);
     NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, h->qq_flv_huheadersize);
@@ -922,7 +926,9 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
 
     /* write index */
     if (h->qq_flv_usec != 0) {
-      ngx_rtmp_record_write_qq_flv_index(s, rctx, h);
+        if (ngx_rtmp_record_write_qq_flv_index(s, rctx, h) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
     }
 
     if (h->type == NGX_RTMP_MSG_VIDEO) {
