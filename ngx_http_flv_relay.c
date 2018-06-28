@@ -600,6 +600,9 @@ done:
     if (rc == NGX_OK) {
         st = &s->in_streams[0];
         h = &st->hdr;
+        h->expiredtime = 0;
+        h->qqhdrtype = NGX_RTMP_HEADER_TYPE_QQ_FLV;
+
         qqflvhdr = &h->qqflvhdr;
         qqflvhdr->usize = s->qqflvhdr->usize;
         qqflvhdr->huheadersize = s->qqflvhdr->huheadersize;

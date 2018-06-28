@@ -1019,11 +1019,16 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
                    &rracf->id, h->mlen);
 
     /* write index */
+    switch (h->qqhdrtype) {
 
-    if (h->qq_flv_flag == 1) {
+    case NGX_RTMP_HEADER_TYPE_QQ_FLV:
         if (ngx_rtmp_record_write_qq_flv_index(s, rctx, h) == NGX_ERROR) {
             return NGX_ERROR;
         }
+        break;
+        
+    case NGX_RTMP_HEADER_TYPE_QQ_HLS:
+        break;
     }
 
     if (h->type == NGX_RTMP_MSG_VIDEO) {
