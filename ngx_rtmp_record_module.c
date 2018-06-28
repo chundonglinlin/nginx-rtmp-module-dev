@@ -453,6 +453,7 @@ ngx_rtmp_record_index_open(ngx_rtmp_session_t *s,
         err = ngx_errno;
         if (err != NGX_ENOENT) {
             ngx_log_error(NGX_LOG_CRIT, s->connection->log, err,
+                          "record: %V failed to open index file '%V'",
                           &rracf->id, &path);
         }
         return NGX_OK;
