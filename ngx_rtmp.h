@@ -294,15 +294,15 @@ struct ngx_rtmp_session_s {
     uint32_t                        qq_flv_len;
     unsigned                        qq_flv_state;
 
-    uint32_t                        qq_flv_usize;
-    uint16_t                        qq_flv_huheadersize;
-    uint16_t                        qq_flv_huversion;
-    uint8_t                         qq_flv_uctype;
-    uint8_t                         qq_flv_uckeyframe;
-    uint32_t                        qq_flv_usec;
-    uint32_t                        qq_flv_useq;
-    uint32_t                        qq_flv_usegid;
-    uint32_t                        qq_flv_ucheck;
+    uint32_t                        qq_flv_usize;                   //大小(数据部分大小)
+    uint16_t                        qq_flv_huheadersize;            //本数据结构头的大小，为26
+    uint16_t                        qq_flv_huversion;               //版本号,一般为0
+    uint8_t                         qq_flv_uctype;                  //类型
+    uint8_t                         qq_flv_uckeyframe;              //标识是不是关键帧，0-flv头，1-普通帧，2-关键帧
+    uint32_t                        qq_flv_usec;                    //时间戳 时间(秒)
+    uint32_t                        qq_flv_useq;                    //序号，每一帧本序号加一，flv头帧序号为0
+    uint32_t                        qq_flv_usegid;                  //段ID，确保全局唯一或者其代表的flv头是唯一的
+    uint32_t                        qq_flv_ucheck;                  //校验和，本结构体后面数据内容的校验和
 
     /* groupid for notify|control*/
     ngx_str_t                       groupid;
