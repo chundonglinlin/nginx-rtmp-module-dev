@@ -982,7 +982,6 @@ ngx_rtmp_record_write_qq_flv_index(ngx_rtmp_session_t *s,
     NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, qqflvhdr->usegid);
     NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, qqflvhdr->ucheck);
     NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, rctx->file.offset);
-    NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, h->expiredtime);
   #undef NGX_RTMP_RECORD_QQ_FLV_HEADER
 
     *ph++ = 1;

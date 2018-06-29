@@ -162,7 +162,6 @@ typedef struct {
     uint32_t                msid;       /* message stream id */    
     ngx_qq_flv_header_t     qqflvhdr;   /* qq flv header */
     ngx_flag_t              qqhdrtype;  /* qq header type */
-    uint32_t                expiredtime;/* record deadline */
 
 } ngx_rtmp_header_t;
 
