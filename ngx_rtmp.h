@@ -130,28 +130,28 @@ typedef struct {
 } ngx_qq_flv_header_t;
 
 typedef struct {
-    uint32_t                        usize;
-    uint16_t                        huheadersize;
-    uint16_t                        uctype;
-    uint32_t                        duration;
-    uint32_t                        useq;
-    uint64_t                        usec;
-    uint16_t                        extendtype;
+    uint32_t                        usize;                     //  数据部分大小
+    uint16_t                        huheadersize;              //  头大小，不固定（可能存在扩展协议）
+    uint16_t                        uctype;                    //  2：音频 3：视频 4：新视频 5：新音频
+    uint32_t                        duration;                  //  分片时长
+    uint32_t                        useq;                      //  分片序号
+    uint64_t                        usec;                      //  UTC时间戳
+    uint16_t                        extendtype;                //  扩展类型 0 - 无扩展， 1 -扩展协议
 } ngx_qq_hls_header_t;
 
 typedef struct {
-    uint64_t                        timestamp;
-    uint32_t                        width;
-    uint32_t                        height;
-    uint8_t                         checktype;
-    uint32_t                        checksum;
-    uint8_t                         p2p_block_count;
+    uint64_t                        timestamp;                 //  分片第一个关键帧PTS时间
+    uint32_t                        width;                     //  视频宽度
+    uint32_t                        height;                    //  视频高度
+    uint8_t                         checktype;                 //  校验类型 1-crc16，2-crc32，3-md5
+    uint32_t                        checksum;                  //  ts分片校验和
+    uint8_t                         p2p_block_count;           //  psp分片总数
 } ngx_qq_hls_extend_t;
 
 typedef struct {
-    uint8_t                         number;
-    uint32_t                        size;
-    uint32_t                        checksum;
+    uint8_t                         number;                    //  p2p分片号
+    uint32_t                        size;                      //  p2p分片大小
+    uint32_t                        checksum;                  //  p2p分片CRC16
 } ngx_qq_p2p_block_t;
 
 typedef struct {
