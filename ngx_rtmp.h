@@ -117,6 +117,22 @@ typedef struct {
 #define NGX_RTMP_HEADER_TYPE_QQ_FLV     1
 #define NGX_RTMP_HEADER_TYPE_QQ_HLS     2
 
+#define NGX_QQ_FLV_INDEX_SIZE           35
+
+
+
+typedef struct {    
+    ngx_queue_t                     *index_queue;
+    uint32_t                        backdelay;               //缓冲时间，qqlive默认为15，qt为45，回看频道由回看列表决定
+    unsigned                        buname:1;                //0-qqlive,1-qt  
+} ngx_qq_flv_index_t;
+
+
+typedef struct {    
+    ngx_qq_flv_header_t             qqflvhdr;                 
+    off_t                           file_offset;             //文件索引
+} ngx_qq_flv_block_index_t;
+
 typedef struct {
     uint32_t                        usize;                   //大小(数据部分大小)
     uint16_t                        huheadersize;            //本数据结构头的大小，为26
