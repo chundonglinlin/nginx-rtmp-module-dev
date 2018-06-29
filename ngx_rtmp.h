@@ -130,6 +130,31 @@ typedef struct {
 } ngx_qq_flv_header_t;
 
 typedef struct {
+    uint32_t                        usize;
+    uint16_t                        huheadersize;
+    uint16_t                        uctype;
+    uint32_t                        duration;
+    uint32_t                        useq;
+    uint64_t                        usec;
+    uint16_t                        extendtype;
+} ngx_qq_hls_header_t;
+
+typedef struct {
+    uint64_t                        timestamp;
+    uint32_t                        width;
+    uint32_t                        height;
+    uint8_t                         checktype;
+    uint32_t                        checksum;
+    uint8_t                         p2p_block_count;
+} ngx_qq_hls_extend_t;
+
+typedef struct {
+    uint8_t                         number;
+    uint32_t                        size;
+    uint32_t                        checksum;
+} ngx_qq_p2p_block_t;
+
+typedef struct {
     uint32_t                csid;       /* chunk stream id */
     uint32_t                timestamp;  /* timestamp (delta) */
     uint32_t                mlen;       /* message length */
