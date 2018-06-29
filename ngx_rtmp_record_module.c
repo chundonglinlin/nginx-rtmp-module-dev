@@ -391,6 +391,10 @@ ngx_rtmp_record_make_path(ngx_rtmp_session_t *s,
     p = (u_char *)ngx_escape_uri(p, ctx->name, ngx_min(ngx_strlen(ctx->name),
                 (size_t)(l - p)), NGX_ESCAPE_URI_COMPONENT);
 
+    if (rracf->qq_unique) {
+      
+    }
+
     /* append timestamp */
     if (rracf->unique) {
         p = ngx_cpymem(p, buf, ngx_min(ngx_sprintf(buf, "-%T",
