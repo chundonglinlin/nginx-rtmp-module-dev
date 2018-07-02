@@ -98,6 +98,14 @@ static ngx_command_t  ngx_rtmp_record_commands[] = {
       offsetof(ngx_rtmp_record_app_conf_t, append),
       NULL },
 
+    { ngx_string("record_index"),
+      NGX_RTMP_MAIN_CONF|NGX_RTMP_SRV_CONF|NGX_RTMP_APP_CONF|
+                         NGX_RTMP_REC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_flag_slot,
+      NGX_RTMP_APP_CONF_OFFSET,
+      offsetof(ngx_rtmp_record_app_conf_t, index),
+      NULL },
+
     { ngx_string("record_lock"),
       NGX_RTMP_MAIN_CONF|NGX_RTMP_SRV_CONF|NGX_RTMP_APP_CONF|
                          NGX_RTMP_REC_CONF|NGX_CONF_TAKE1,
@@ -197,6 +205,7 @@ ngx_rtmp_record_create_app_conf(ngx_conf_t *cf)
     racf->lock_file = NGX_CONF_UNSET;
     racf->notify = NGX_CONF_UNSET;
     racf->url = NGX_CONF_UNSET_PTR;
+    racf->index = NGX_CONF_UNSET;
 
     if (ngx_array_init(&racf->rec, cf->pool, 1, sizeof(void *)) != NGX_OK) {
         return NULL;
@@ -219,6 +228,7 @@ ngx_rtmp_record_merge_app_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_size_value(conf->max_frames, prev->max_frames, 0);
     ngx_conf_merge_value(conf->unique, prev->unique, 0);
     ngx_conf_merge_value(conf->append, prev->append, 0);
+    ngx_conf_merge_value(conf->index, prev->index, 0);
     ngx_conf_merge_value(conf->lock_file, prev->lock_file, 0);
     ngx_conf_merge_value(conf->notify, prev->notify, 0);
     ngx_conf_merge_msec_value(conf->interval, prev->interval,
