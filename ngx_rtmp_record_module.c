@@ -971,8 +971,9 @@ ngx_rtmp_record_write_qq_flv_index(ngx_rtmp_session_t *s,
                             ngx_rtmp_record_rec_ctx_t *rctx,
                             ngx_rtmp_header_t *h)
 {
-    u_char                      hdr[35], *p, *ph;
+    u_char                      hdr[NGX_QQ_FLV_INDEX_SIZE + 1], *p, *ph;
     ngx_qq_flv_header_t         *qqflvhdr;
+    size_t                      i;
 
     qqflvhdr = &h->qqflvhdr;
     if (rctx->qq_flv_useq == qqflvhdr->useq) {
@@ -998,6 +999,7 @@ ngx_rtmp_record_write_qq_flv_index(ngx_rtmp_session_t *s,
   #undef NGX_RTMP_RECORD_QQ_FLV_HEADER
 
     *ph++ = 1;
+    *ph = 0;
 
     if (ngx_write_file(&rctx->index_file, hdr, NGX_QQ_FLV_INDEX_SIZE, rctx->index_file.offset)
         == NGX_ERROR)
@@ -1009,7 +1011,7 @@ ngx_rtmp_record_write_qq_flv_index(ngx_rtmp_session_t *s,
         return NGX_ERROR;
     }
 
-    rctx->qq_flv_useq = qqflvhdr->qq_flv_useq;
+    rctx->qq_flv_useq = qqflvhdr->useq;
 
     return NGX_OK;
 }

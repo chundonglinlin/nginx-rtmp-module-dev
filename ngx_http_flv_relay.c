@@ -603,15 +603,15 @@ done:
         h->qqhdrtype = NGX_RTMP_HEADER_TYPE_QQ_FLV;
 
         qqflvhdr = &h->qqflvhdr;
-        qqflvhdr->usize = s->qqflvhdr->usize;
-        qqflvhdr->huheadersize = s->qqflvhdr->huheadersize;
-        qqflvhdr->huversion = s->qqflvhdr->huversion;
-        qqflvhdr->uctype = s->qqflvhdr->uctype;
-        qqflvhdr->uckeyframe = s->qqflvhdr->uckeyframe;
-        qqflvhdr->usec = s->qqflvhdr->usec;
-        qqflvhdr->useq = s->qqflvhdr->useq;
-        qqflvhdr->usegid = s->qqflvhdr->usegid;
-        qqflvhdr->ucheck = s->qqflvhdr->ucheck;
+        qqflvhdr->usize = (&s->qqflvhdr)->usize;
+        qqflvhdr->huheadersize = (&s->qqflvhdr)->huheadersize;
+        qqflvhdr->huversion = (&s->qqflvhdr)->huversion;
+        qqflvhdr->uctype = (&s->qqflvhdr)->uctype;
+        qqflvhdr->uckeyframe = (&s->qqflvhdr)->uckeyframe;
+        qqflvhdr->usec = (&s->qqflvhdr)->usec;
+        qqflvhdr->useq = (&s->qqflvhdr)->useq;
+        qqflvhdr->usegid = (&s->qqflvhdr)->usegid;
+        qqflvhdr->ucheck = (&s->qqflvhdr)->ucheck;
     }
 
     return rc;
