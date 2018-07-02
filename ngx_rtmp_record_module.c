@@ -923,6 +923,15 @@ ngx_rtmp_record_node_close(ngx_rtmp_session_t *s,
         ngx_rtmp_record_notify_error(s, rctx);
     }
 
+    if (rracf->index) {
+      if (ngx_close_file(rctx->index_file.fd) == NGX_FILE_ERROR) {
+          err = ngx_errno;
+          ngx_log_error(NGX_LOG_CRIT, s->connection->log, err,
+                      "record index: %V error closing file", &rracf->id);
+          
+      }
+    }
+
     rctx->file.fd = NGX_INVALID_FILE;
 
     ngx_log_debug1(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
