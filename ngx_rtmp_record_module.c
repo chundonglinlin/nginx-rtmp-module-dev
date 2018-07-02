@@ -430,6 +430,90 @@ ngx_rtmp_record_notify_error(ngx_rtmp_session_t *s,
                          rracf->id.data ? (char *) rracf->id.data : "");
 }
 
+static ngx_int_t 
+ngx_rtmp_record_index_open(ngx_rtmp_session_t *s,
+                           ngx_rtmp_record_rec_ctx_t *rctx, ngx_str_t *path)
+{
+    ngx_rtmp_record_app_conf_t *rracf;
+    off_t                       file_size;
+    ngx_str_t                   index_path;
+    u_char                      *p;
+    static u_char               pbuf[NGX_MAX_PATH + 1];
+
+    rracf = rctx->conf;
+
+    p = pbuf;
+    p = ngx_cpymem(p, ".index", 6);
+
+    *p = 0;
+    index_path.data = pbuf;
+    index_path.len = p - pbuf;    
+
+    ngx_memzero(&rctx->index_file, sizeof(rctx->index_file));
+    rctx->index_file.offset = 0;
+    rctx->index_file.log = s->connection->log;
+    rctx->index_file.fd = ngx_open_file(index_path.data, NGX_FILE_RDWR, NGX_FILE_CREATE_OR_OPEN,
+                                        NGX_FILE_DEFAULT_ACCESS);
+    ngx_str_set(&rctx->index_file.name, "indexed");
+    if (rctx->index_file.fd == NGX_INVALID_FILE) {
+        err = ngx_errno;
+        if (err != NGX_ENOENT) {
+            ngx_log_error(NGX_LOG_CRIT, s->connection->log, err,
+                          "record: %V failed to open index file '%V'",
+                          &rracf->id, &index_path);
+        }
+        return NGX_OK;
+    }
+
+#if !(NGX_WIN32)
+      if (rracf->lock_file) {
+          err = ngx_lock_fd(rctx->index_file.fd);
+          if (err) {
+              ngx_log_error(NGX_LOG_CRIT, s->connection->log, err,
+                            "record: %V lock failed", &rracf->id);
+          }
+      }
+#endif
+
+    file_size = 0;
+
+#if (NGX_WIN32)
+    {
+        LONG  lo, hi;
+
+        lo = 0;
+        hi = 0;
+        lo = SetFilePointer(rctx->index_file.fd, lo, &hi, FILE_END);
+        file_size = (lo == INVALID_SET_FILE_POINTER ?
+                     (off_t) -1 : (off_t) hi << 32 | (off_t) lo);
+    }
+#else
+    file_size = lseek(rctx->index_file.fd, 0, SEEK_END);
+#endif
+
+    if (file_size == (off_t) -1) {
+        ngx_log_error(NGX_LOG_CRIT, s->connection->log, ngx_errno,
+                      "record: %V seek failed", &rracf->id);
+        goto done;
+    }
+
+    if (file_size % NGX_QQ_FLV_INDEX_SIZE != 0) {
+        u_char edr[NGX_QQ_FLV_INDEX_SIZE - 1];
+        ngx_memzero(edr, sizeof(edr));
+        rctx->index_file.offset = file_size;
+        if (ngx_write_file(&rctx->index_file, edr, file_size % NGX_QQ_FLV_INDEX_SIZE, 
+                            rctx->index_file.offset) == NGX_ERROR) {
+              return NGX_ERROR;
+        }
+        file_size = rctx->index_file.offset;
+    }
+
+done:
+
+    rctx->index_file.offset = file_size;
+
+    return NGX_OK;
+}
 
 static ngx_int_t
 ngx_rtmp_record_node_open(ngx_rtmp_session_t *s,
