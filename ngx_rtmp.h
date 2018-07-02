@@ -142,6 +142,7 @@ typedef struct {
 typedef struct {    
     ngx_qq_flv_header_t             qqflvhdr;                 
     off_t                           file_offset;             //文件索引
+    time_t                          timestamp;               //记录文件时间
 } ngx_qq_flv_block_index_t;
 
 typedef struct {

@@ -612,6 +612,16 @@ done:
         qqflvhdr->useq = (&s->qqflvhdr)->useq;
         qqflvhdr->usegid = (&s->qqflvhdr)->usegid;
         qqflvhdr->ucheck = (&s->qqflvhdr)->ucheck;
+
+        printf("usize:\t%u\n", qqflvhdr->usize);
+        printf("huheadersize:\t%u\n", qqflvhdr->huheadersize);
+        printf("huversion:\t%u\n", qqflvhdr->huversion);
+        printf("uctype:\t%u\n", qqflvhdr->uctype);
+        printf("uckeyframe:\t%u\n", qqflvhdr->uckeyframe);
+        printf("usec:\t%u\n", qqflvhdr->usec);
+        printf("useq:\t%u\n", qqflvhdr->useq);
+        printf("usegid:\t%u\n", qqflvhdr->usegid);
+        printf("ucheck:\t%u\n", qqflvhdr->ucheck);
     }
 
     return rc;
@@ -986,7 +996,8 @@ ngx_http_relay_recv_body(void *request, ngx_http_request_t *hcr)
             break;
         }
 
-        n = ngx_http_relay_parse_flv(s, l->buf);
+        //n = ngx_http_relay_parse_flv(s, l->buf);
+        n = ngx_http_relay_parse_qq_flv(s, l->buf);
 
         if (n == NGX_ERROR) {
             ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,

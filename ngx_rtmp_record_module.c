@@ -454,6 +454,7 @@ ngx_rtmp_record_index_open(ngx_rtmp_session_t *s,
     rracf = rctx->conf;
 
     p = pbuf;
+    p = ngx_cpymem(p, path->data, path->len);
     p = ngx_cpymem(p, ".index", 6);
 
     *p = 0;
