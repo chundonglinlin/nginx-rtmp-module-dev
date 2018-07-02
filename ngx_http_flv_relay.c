@@ -124,7 +124,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
             qqflvhdr = &s->qqflvhdr;
             pc = (u_char *) &qqflvhdr->usize;
             pc[3] = ch;
-            s->qq_flv_len = s->qq_flv_usize;
+            s->qq_flv_len = qqflvhdr->usize;
             state = qq_flv_huheadersize0;
             break;
 
@@ -600,7 +600,6 @@ done:
     if (rc == NGX_OK) {
         st = &s->in_streams[0];
         h = &st->hdr;
-        h->expiredtime = 0;
         h->qqhdrtype = NGX_RTMP_HEADER_TYPE_QQ_FLV;
 
         qqflvhdr = &h->qqflvhdr;

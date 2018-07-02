@@ -449,6 +449,7 @@ ngx_rtmp_record_index_open(ngx_rtmp_session_t *s,
     ngx_str_t                   index_path;
     u_char                      *p;
     static u_char               pbuf[NGX_MAX_PATH + 1];
+    ngx_err_t                   err;
 
     rracf = rctx->conf;
 

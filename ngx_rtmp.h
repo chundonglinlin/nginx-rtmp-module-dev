@@ -127,12 +127,6 @@ typedef struct {
     unsigned                        buname:1;                //0-qqlive,1-qt  
 } ngx_qq_flv_index_t;
 
-
-typedef struct {    
-    ngx_qq_flv_header_t             qqflvhdr;                 
-    off_t                           file_offset;             //文件索引
-} ngx_qq_flv_block_index_t;
-
 typedef struct {
     uint32_t                        usize;                   //大小(数据部分大小)
     uint16_t                        huheadersize;            //本数据结构头的大小，为26
@@ -145,16 +139,10 @@ typedef struct {
     uint32_t                        ucheck;                  //校验和，本结构体后面数据内容的校验和
 } ngx_qq_flv_header_t;
 
-typedef struct {
-    uint32_t                        usize;                     //  数据部分大小
-    uint16_t                        huheadersize;              //  头大小，不固定（可能存在扩展协议）
-    uint16_t                        uctype;                    //  2：音频 3：视频 4：新视频 5：新音频
-    uint32_t                        duration;                  //  分片时长
-    uint32_t                        useq;                      //  分片序号
-    uint64_t                        usec;                      //  UTC时间戳
-    uint16_t                        extendtype;                //  扩展类型 0 - 无扩展， 1 -扩展协议
-    ngx_qq_hls_extend_t             qqhlsextend;
-} ngx_qq_hls_header_t;
+typedef struct {    
+    ngx_qq_flv_header_t             qqflvhdr;                 
+    off_t                           file_offset;             //文件索引
+} ngx_qq_flv_block_index_t;
 
 typedef struct {
     uint64_t                        timestamp;                 //  分片第一个关键帧PTS时间
@@ -165,6 +153,17 @@ typedef struct {
     uint8_t                         p2p_block_count;           //  psp分片总数
     ngx_queue_t                     *p2p_block_queue;
 } ngx_qq_hls_extend_t;
+
+typedef struct {
+    uint32_t                        usize;                     //  数据部分大小
+    uint16_t                        huheadersize;              //  头大小，不固定（可能存在扩展协议）
+    uint16_t                        uctype;                    //  2：音频 3：视频 4：新视频 5：新音频
+    uint32_t                        duration;                  //  分片时长
+    uint32_t                        useq;                      //  分片序号
+    uint64_t                        usec;                      //  UTC时间戳
+    uint16_t                        extendtype;                //  扩展类型 0 - 无扩展， 1 -扩展协议
+    ngx_qq_hls_extend_t             qqhlsextend;
+} ngx_qq_hls_header_t;
 
 typedef struct {
     uint8_t                         number;                    //  p2p分片号
