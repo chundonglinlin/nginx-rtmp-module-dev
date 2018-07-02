@@ -501,7 +501,10 @@ ngx_rtmp_record_index_open(ngx_rtmp_session_t *s,
         u_char edr[NGX_QQ_FLV_INDEX_SIZE - 1];
         ngx_memzero(edr, sizeof(edr));
         rctx->index_file.offset = file_size;
-        ngx_write_file(&rctx->index_file, edr, file_size % NGX_QQ_FLV_INDEX_SIZE, rctx->index_file.offset);
+        if (ngx_write_file(&rctx->index_file, edr, file_size % NGX_QQ_FLV_INDEX_SIZE, 
+                            rctx->index_file.offset) == NGX_ERROR) {
+              return NGX_ERROR;
+        }
         file_size = rctx->index_file.offset;
     }
 
