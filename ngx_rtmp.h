@@ -153,6 +153,7 @@ typedef struct {
     uint32_t                        useq;                      //  分片序号
     uint64_t                        usec;                      //  UTC时间戳
     uint16_t                        extendtype;                //  扩展类型 0 - 无扩展， 1 -扩展协议
+    ngx_qq_hls_extend_t             qqhlsextend;
 } ngx_qq_hls_header_t;
 
 typedef struct {
@@ -162,6 +163,7 @@ typedef struct {
     uint8_t                         checktype;                 //  校验类型 1-crc16，2-crc32，3-md5
     uint32_t                        checksum;                  //  ts分片校验和
     uint8_t                         p2p_block_count;           //  psp分片总数
+    ngx_queue_t                     *p2p_block_queue;
 } ngx_qq_hls_extend_t;
 
 typedef struct {
@@ -177,6 +179,7 @@ typedef struct {
     uint8_t                 type;       /* message type id */
     uint32_t                msid;       /* message stream id */    
     ngx_qq_flv_header_t     qqflvhdr;   /* qq flv header */
+    ngx_qq_hls_header_t     qqhlshdr;   /* qq hls header */
     ngx_flag_t              qqhdrtype;  /* qq header type */
 
 } ngx_rtmp_header_t;
