@@ -32,6 +32,7 @@ typedef struct {
     ngx_flag_t                          append;
     ngx_flag_t                          lock_file;
     ngx_flag_t                          notify;
+    ngx_flag_t                          index;
     ngx_url_t                          *url;
 
     void                              **rec_conf;
