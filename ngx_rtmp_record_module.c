@@ -376,6 +376,7 @@ ngx_rtmp_record_make_path(ngx_rtmp_session_t *s,
 
     static u_char                   buf[NGX_TIME_T_LEN + 1];
     static u_char                   pbuf[NGX_MAX_PATH + 1];
+    static u_char                   index_pbuf[NGX_MAX_PATH + 1];
 
     ctx = ngx_rtmp_get_module_ctx(s, ngx_rtmp_record_module);
 
@@ -391,17 +392,14 @@ ngx_rtmp_record_make_path(ngx_rtmp_session_t *s,
     p = (u_char *)ngx_escape_uri(p, ctx->name, ngx_min(ngx_strlen(ctx->name),
                 (size_t)(l - p)), NGX_ESCAPE_URI_COMPONENT);
 
-    if (rracf->qq_unique) {
-      
-    }
-
     /* append timestamp */
     if (rracf->unique) {
         p = ngx_cpymem(p, buf, ngx_min(ngx_sprintf(buf, "-%T",
                        rctx->timestamp) - buf, l - p));
     }
 
-    index_p = p;
+    index_p = index_pbuf;
+    index_p = ngx_cpymem(index_p, pbuf, size_t(p - pbuf));
 
     if (ngx_strchr(rracf->suffix.data, '%')) {
         ngx_libc_localtime(rctx->timestamp, &tm);
@@ -418,8 +416,8 @@ ngx_rtmp_record_make_path(ngx_rtmp_session_t *s,
     index_p = ngx_cpymem(index_p, ".index",
                   ngx_min(6, (size_t)(l - index_p)));
     *index_p = 0;
-    index_path->data = pbuf;
-    index_path->len  = index_p - pbuf;
+    index_path->data = index_pbuf;
+    index_path->len  = index_p - index_pbuf;
 
     ngx_log_debug2(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
                    "record: %V path: '%V'", &rracf->id, path);
