@@ -436,13 +436,23 @@ ngx_rtmp_record_index_open(ngx_rtmp_session_t *s,
 {
     ngx_rtmp_record_app_conf_t *rracf;
     off_t                       file_size;
+    ngx_str_t                   index_path;
+    u_char                      *p;
+    static u_char               pbuf[NGX_MAX_PATH + 1];
 
     rracf = rctx->conf;
+
+    p = pbuf;
+    p = ngx_cpymem(p, ".index", 6);
+
+    *p = 0;
+    index_path.data = pbuf;
+    index_path.len = p - pbuf;    
 
     ngx_memzero(&rctx->index_file, sizeof(rctx->index_file));
     rctx->index_file.offset = 0;
     rctx->index_file.log = s->connection->log;
-    rctx->index_file.fd = ngx_open_file(path.data, NGX_FILE_RDWR, NGX_FILE_CREATE_OR_OPEN,
+    rctx->index_file.fd = ngx_open_file(index_path.data, NGX_FILE_RDWR, NGX_FILE_CREATE_OR_OPEN,
                                         NGX_FILE_DEFAULT_ACCESS);
     ngx_str_set(&rctx->index_file.name, "indexed");
     if (rctx->index_file.fd == NGX_INVALID_FILE) {
@@ -450,7 +460,7 @@ ngx_rtmp_record_index_open(ngx_rtmp_session_t *s,
         if (err != NGX_ENOENT) {
             ngx_log_error(NGX_LOG_CRIT, s->connection->log, err,
                           "record: %V failed to open index file '%V'",
-                          &rracf->id, &path);
+                          &rracf->id, &index_path);
         }
         return NGX_OK;
     }
