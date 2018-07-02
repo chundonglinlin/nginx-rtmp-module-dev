@@ -460,6 +460,10 @@ ngx_rtmp_record_node_open(ngx_rtmp_session_t *s,
 
     ngx_rtmp_record_make_path(s, rctx, &path);
 
+    if (rracf->index) {
+        ngx_rtmp_record_index_open(s, rctx, &path);
+    }
+
     mode = rracf->append ? NGX_FILE_RDWR : NGX_FILE_WRONLY;
     create_mode = rracf->append ? NGX_FILE_CREATE_OR_OPEN : NGX_FILE_TRUNCATE;
 
