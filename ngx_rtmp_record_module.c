@@ -367,16 +367,15 @@ ngx_rtmp_record_find(ngx_rtmp_record_app_conf_t *racf, ngx_str_t *id)
 /* This funcion returns pointer to a static buffer */
 static void
 ngx_rtmp_record_make_path(ngx_rtmp_session_t *s,
-                          ngx_rtmp_record_rec_ctx_t *rctx, ngx_str_t *path, ngx_str_t *index_path)
+                          ngx_rtmp_record_rec_ctx_t *rctx, ngx_str_t *path)
 {
     ngx_rtmp_record_ctx_t          *ctx;
     ngx_rtmp_record_app_conf_t     *rracf;
-    u_char                         *p, *l, *index_p;
+    u_char                         *p, *l;
     struct tm                       tm;
 
     static u_char                   buf[NGX_TIME_T_LEN + 1];
     static u_char                   pbuf[NGX_MAX_PATH + 1];
-    static u_char                   index_pbuf[NGX_MAX_PATH + 1];
 
     ctx = ngx_rtmp_get_module_ctx(s, ngx_rtmp_record_module);
 
@@ -398,9 +397,6 @@ ngx_rtmp_record_make_path(ngx_rtmp_session_t *s,
                        rctx->timestamp) - buf, l - p));
     }
 
-    index_p = index_pbuf;
-    index_p = ngx_cpymem(index_p, pbuf, size_t(p - pbuf));
-
     if (ngx_strchr(rracf->suffix.data, '%')) {
         ngx_libc_localtime(rctx->timestamp, &tm);
         p += strftime((char *) p, l - p, (char *) rracf->suffix.data, &tm);
@@ -412,12 +408,6 @@ ngx_rtmp_record_make_path(ngx_rtmp_session_t *s,
     *p = 0;
     path->data = pbuf;
     path->len  = p - pbuf;
-
-    index_p = ngx_cpymem(index_p, ".index",
-                  ngx_min(6, (size_t)(l - index_p)));
-    *index_p = 0;
-    index_path->data = index_pbuf;
-    index_path->len  = index_p - index_pbuf;
 
     ngx_log_debug2(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
                    "record: %V path: '%V'", &rracf->id, path);
@@ -540,7 +530,7 @@ ngx_rtmp_record_node_open(ngx_rtmp_session_t *s,
     rctx->last = *ngx_cached_time;
     rctx->timestamp = ngx_cached_time->sec;
 
-    ngx_rtmp_record_make_path(s, rctx, &path, &index_path);
+    ngx_rtmp_record_make_path(s, rctx, &path);
 
     if (rracf->index) {
         ngx_rtmp_record_index_open(s, rctx, &path);
