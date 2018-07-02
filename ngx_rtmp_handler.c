@@ -793,6 +793,13 @@ ngx_rtmp_send_message(ngx_rtmp_session_t *s, ngx_rtmp_frame_t *out,
 
     ngx_rtmp_shared_acquire_frame(out);
 
+	if(s->static_pull_fake && !s->second_relay) {
+		ngx_rtmp_shared_free_frame(out);
+		++s->out_pos;
+		s->out_pos %= s->out_queue;
+		return NGX_OK;
+	}
+
     ngx_log_debug3(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
             "RTMP send nmsg=%ui, priority=%ui #%ui",
             nmsg, priority, s->out_last);
@@ -802,6 +809,14 @@ ngx_rtmp_send_message(ngx_rtmp_session_t *s, ngx_rtmp_frame_t *out,
     }
 
 send:
+
+	if(s->static_pull_fake && !s->second_relay) {
+		ngx_rtmp_shared_free_frame(out);
+		++s->out_pos;
+		s->out_pos %= s->out_queue;
+		return NGX_OK;
+	}
+
     if (!s->connection->write->active) {
         if (s->live_type != NGX_RTMP_LIVE) {
             if (s->handler) {

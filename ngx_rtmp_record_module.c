@@ -430,91 +430,6 @@ ngx_rtmp_record_notify_error(ngx_rtmp_session_t *s,
                          rracf->id.data ? (char *) rracf->id.data : "");
 }
 
-static ngx_int_t 
-ngx_rtmp_record_index_open(ngx_rtmp_session_t *s,
-                           ngx_rtmp_record_rec_ctx_t *rctx, ngx_str_t *path)
-{
-    ngx_rtmp_record_app_conf_t *rracf;
-    off_t                       file_size;
-    ngx_str_t                   index_path;
-    u_char                      *p;
-    static u_char               pbuf[NGX_MAX_PATH + 1];
-
-    rracf = rctx->conf;
-
-    p = pbuf;
-    p = ngx_cpymem(p, ".index", 6);
-
-    *p = 0;
-    index_path.data = pbuf;
-    index_path.len = p - pbuf;    
-
-    ngx_memzero(&rctx->index_file, sizeof(rctx->index_file));
-    rctx->index_file.offset = 0;
-    rctx->index_file.log = s->connection->log;
-    rctx->index_file.fd = ngx_open_file(index_path.data, NGX_FILE_RDWR, NGX_FILE_CREATE_OR_OPEN,
-                                        NGX_FILE_DEFAULT_ACCESS);
-    ngx_str_set(&rctx->index_file.name, "indexed");
-    if (rctx->index_file.fd == NGX_INVALID_FILE) {
-        err = ngx_errno;
-        if (err != NGX_ENOENT) {
-            ngx_log_error(NGX_LOG_CRIT, s->connection->log, err,
-                          "record: %V failed to open index file '%V'",
-                          &rracf->id, &index_path);
-        }
-        return NGX_OK;
-    }
-
-#if !(NGX_WIN32)
-      if (rracf->lock_file) {
-          err = ngx_lock_fd(rctx->index_file.fd);
-          if (err) {
-              ngx_log_error(NGX_LOG_CRIT, s->connection->log, err,
-                            "record: %V lock failed", &rracf->id);
-          }
-      }
-#endif
-
-    file_size = 0;
-
-#if (NGX_WIN32)
-    {
-        LONG  lo, hi;
-
-        lo = 0;
-        hi = 0;
-        lo = SetFilePointer(rctx->index_file.fd, lo, &hi, FILE_END);
-        file_size = (lo == INVALID_SET_FILE_POINTER ?
-                     (off_t) -1 : (off_t) hi << 32 | (off_t) lo);
-    }
-#else
-    file_size = lseek(rctx->index_file.fd, 0, SEEK_END);
-#endif
-
-    if (file_size == (off_t) -1) {
-        ngx_log_error(NGX_LOG_CRIT, s->connection->log, ngx_errno,
-                      "record: %V seek failed", &rracf->id);
-        goto done;
-    }
-
-    if (file_size % NGX_QQ_FLV_INDEX_SIZE != 0) {
-        u_char edr[NGX_QQ_FLV_INDEX_SIZE - 1];
-        ngx_memzero(edr, sizeof(edr));
-        rctx->index_file.offset = file_size;
-        if (ngx_write_file(&rctx->index_file, edr, file_size % NGX_QQ_FLV_INDEX_SIZE, 
-                            rctx->index_file.offset) == NGX_ERROR) {
-              return NGX_ERROR;
-        }
-        file_size = rctx->index_file.offset;
-    }
-
-done:
-
-    rctx->index_file.offset = file_size;
-
-    return NGX_OK;
-}
-
 
 static ngx_int_t
 ngx_rtmp_record_node_open(ngx_rtmp_session_t *s,
@@ -522,7 +437,7 @@ ngx_rtmp_record_node_open(ngx_rtmp_session_t *s,
 {
     ngx_rtmp_record_app_conf_t *rracf;
     ngx_err_t                   err;
-    ngx_str_t                   path, index_path;
+    ngx_str_t                   path;
     ngx_int_t                   mode, create_mode;
     u_char                      buf[8], *p;
     off_t                       file_size;
@@ -544,11 +459,6 @@ ngx_rtmp_record_node_open(ngx_rtmp_session_t *s,
     rctx->timestamp = ngx_cached_time->sec;
 
     ngx_rtmp_record_make_path(s, rctx, &path);
-
-    if (rracf->index) {
-        ngx_rtmp_record_index_open(s, rctx, &path);
-    }
-
 
     mode = rracf->append ? NGX_FILE_RDWR : NGX_FILE_WRONLY;
     create_mode = rracf->append ? NGX_FILE_CREATE_OR_OPEN : NGX_FILE_TRUNCATE;
@@ -914,18 +824,9 @@ ngx_rtmp_record_node_close(ngx_rtmp_session_t *s,
     }
 
     rctx->file.fd = NGX_INVALID_FILE;
-    
+
     ngx_log_debug1(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
                    "record: %V closed", &rracf->id);
-
-    if (ngx_close_file(rctx->index_file.fd) == NGX_FILE_ERROR) {
-        err = ngx_errno;
-        ngx_log_error(NGX_LOG_CRIT, s->connection->log, err,
-                      "record: %V error closing file", &rracf->id);
-    }
-
-    rctx->index_file.fd = NGX_INVALID_FILE;
-
 
     if (rracf->notify) {
         ngx_rtmp_send_status(s, "NetStream.Record.Stop", "status",
@@ -966,53 +867,6 @@ next:
     return next_close_stream(s, v);
 }
 
-static ngx_int_t
-ngx_rtmp_record_write_qq_flv_index(ngx_rtmp_session_t *s,
-                            ngx_rtmp_record_rec_ctx_t *rctx,
-                            ngx_rtmp_header_t *h)
-{
-    u_char                      hdr[35], *p, *ph;
-    ngx_qq_flv_header_t         *qqflvhdr;
-
-    qqflvhdr = &h->qqflvhdr;
-    if (rctx->qq_flv_useq == qqflvhdr->useq) {
-        return NGX_OK;
-    }
-    
-    ph = hdr;
-  #define NGX_RTMP_RECORD_QQ_FLV_HEADER(target, var)                              \
-    p = (u_char*)&var;                                                            \
-    for (i=0; i<sizeof(var); i++)                                                 \
-        *target++ = p[i];
-
-    NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, qqflvhdr->usize);
-    NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, qqflvhdr->huheadersize);
-    NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, qqflvhdr->huversion);
-    NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, qqflvhdr->uctype);
-    NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, qqflvhdr->uckeyframe);
-    NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, qqflvhdr->usec);
-    NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, qqflvhdr->useq);
-    NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, qqflvhdr->usegid);
-    NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, qqflvhdr->ucheck);
-    NGX_RTMP_RECORD_QQ_FLV_HEADER(ph, rctx->file.offset);
-  #undef NGX_RTMP_RECORD_QQ_FLV_HEADER
-
-    *ph++ = 1;
-
-    if (ngx_write_file(&rctx->index_file, hdr, NGX_QQ_FLV_INDEX_SIZE, rctx->index_file.offset)
-        == NGX_ERROR)
-    {
-        ngx_rtmp_record_notify_error(s, rctx);
-
-        ngx_close_file(rctx->index_file.fd);
-
-        return NGX_ERROR;
-    }
-
-    rctx->qq_flv_useq = qqflvhdr->qq_flv_useq;
-
-    return NGX_OK;
-}
 
 static ngx_int_t
 ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
@@ -1029,19 +883,6 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
     ngx_log_debug2(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
                    "record: %V frame: mlen=%uD",
                    &rracf->id, h->mlen);
-
-    /* write index */
-    switch (h->qqhdrtype) {
-
-    case NGX_RTMP_HEADER_TYPE_QQ_FLV:
-        if (ngx_rtmp_record_write_qq_flv_index(s, rctx, h) == NGX_ERROR) {
-            return NGX_ERROR;
-        }
-        break;
-        
-    case NGX_RTMP_HEADER_TYPE_QQ_HLS:
-        break;
-    }
 
     if (h->type == NGX_RTMP_MSG_VIDEO) {
         rctx->video = 1;

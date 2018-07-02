@@ -1137,6 +1137,9 @@ ngx_rtmp_oclp_relay_error(ngx_rtmp_session_t *s, ngx_uint_t status)
         }
 
         for (; cctx; cctx = cctx->next) {
+			if(cctx->session->static_pull_fake) {
+				continue;
+			}
             cctx->session->status = status;
             ngx_rtmp_finalize_session(cctx->session);
         }
@@ -1532,7 +1535,7 @@ ngx_rtmp_oclp_push(ngx_rtmp_session_t *s)
 
     type = NGX_RTMP_OCLP_PUSH;
     oacf = ngx_rtmp_get_module_app_conf(s, ngx_rtmp_oclp_module);
-    if (oacf->events[type].nelts == 0 || s->relay) {
+    if (oacf->events[type].nelts == 0 || (s->relay && !s->static_pull_fake)) {
         return next_push(s);
     }
 

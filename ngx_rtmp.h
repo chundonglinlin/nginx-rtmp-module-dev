@@ -113,75 +113,13 @@ typedef struct {
  * + max 4  extended header (timestamp) */
 #define NGX_RTMP_MAX_CHUNK_HEADER       18
 
-#define NGX_RTMP_HEADER_TYPE_DEFAULT    0
-#define NGX_RTMP_HEADER_TYPE_QQ_FLV     1
-#define NGX_RTMP_HEADER_TYPE_QQ_HLS     2
-
-#define NGX_QQ_FLV_INDEX_SIZE           35
-
-
-
-typedef struct {    
-    ngx_queue_t                     *index_queue;
-    uint32_t                        backdelay;               //缓冲时间，qqlive默认为15，qt为45，回看频道由回看列表决定
-    unsigned                        buname:1;                //0-qqlive,1-qt  
-} ngx_qq_flv_index_t;
-
-
-typedef struct {    
-    ngx_qq_flv_header_t             qqflvhdr;                 
-    off_t                           file_offset;             //文件索引
-} ngx_qq_flv_block_index_t;
-
-typedef struct {
-    uint32_t                        usize;                   //大小(数据部分大小)
-    uint16_t                        huheadersize;            //本数据结构头的大小，为26
-    uint16_t                        huversion;               //版本号,一般为0
-    uint8_t                         uctype;                  //类型
-    uint8_t                         uckeyframe;              //标识是不是关键帧，0-flv头，1-普通帧，2-关键帧
-    uint32_t                        usec;                    //时间戳 时间(秒)
-    uint32_t                        useq;                    //序号，每一帧本序号加一，flv头帧序号为0
-    uint32_t                        usegid;                  //段ID，确保全局唯一或者其代表的flv头是唯一的
-    uint32_t                        ucheck;                  //校验和，本结构体后面数据内容的校验和
-} ngx_qq_flv_header_t;
-
-typedef struct {
-    uint32_t                        usize;                     //  数据部分大小
-    uint16_t                        huheadersize;              //  头大小，不固定（可能存在扩展协议）
-    uint16_t                        uctype;                    //  2：音频 3：视频 4：新视频 5：新音频
-    uint32_t                        duration;                  //  分片时长
-    uint32_t                        useq;                      //  分片序号
-    uint64_t                        usec;                      //  UTC时间戳
-    uint16_t                        extendtype;                //  扩展类型 0 - 无扩展， 1 -扩展协议
-    ngx_qq_hls_extend_t             qqhlsextend;
-} ngx_qq_hls_header_t;
-
-typedef struct {
-    uint64_t                        timestamp;                 //  分片第一个关键帧PTS时间
-    uint32_t                        width;                     //  视频宽度
-    uint32_t                        height;                    //  视频高度
-    uint8_t                         checktype;                 //  校验类型 1-crc16，2-crc32，3-md5
-    uint32_t                        checksum;                  //  ts分片校验和
-    uint8_t                         p2p_block_count;           //  psp分片总数
-    ngx_queue_t                     *p2p_block_queue;
-} ngx_qq_hls_extend_t;
-
-typedef struct {
-    uint8_t                         number;                    //  p2p分片号
-    uint32_t                        size;                      //  p2p分片大小
-    uint32_t                        checksum;                  //  p2p分片CRC16
-} ngx_qq_p2p_block_t;
 
 typedef struct {
     uint32_t                csid;       /* chunk stream id */
     uint32_t                timestamp;  /* timestamp (delta) */
     uint32_t                mlen;       /* message length */
     uint8_t                 type;       /* message type id */
-    uint32_t                msid;       /* message stream id */    
-    ngx_qq_flv_header_t     qqflvhdr;   /* qq flv header */
-    ngx_qq_hls_header_t     qqhlshdr;   /* qq hls header */
-    ngx_flag_t              qqhdrtype;  /* qq header type */
-
+    uint32_t                msid;       /* message stream id */
 } ngx_rtmp_header_t;
 
 
@@ -340,12 +278,6 @@ struct ngx_rtmp_session_s {
     unsigned                        flv_tagsize;
     uint64_t                        flv_recv_bytes;
 
-    /* for qq flv header */
-    uint32_t                        qq_flv_len;
-    unsigned                        qq_flv_state;
-
-    ngx_qq_flv_header_t             qqflvhdr;
-
     /* groupid for notify|control*/
     ngx_str_t                       groupid;
 
@@ -390,6 +322,11 @@ struct ngx_rtmp_session_s {
 
     /* for output access log time*/
     ngx_msec_t                      log_time;
+
+	/* for static pull */
+	unsigned						static_pull_fake:1;
+	/* second relay */
+	unsigned						second_relay:1;
 
     /* circular buffer of RTMP message pointers */
     ngx_msec_t                      timeout;

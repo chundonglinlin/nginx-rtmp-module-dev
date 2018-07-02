@@ -252,8 +252,10 @@ ngx_rtmp_publish_filter(ngx_rtmp_session_t *s, ngx_rtmp_publish_t *v)
         ctx->relay_completion = 1;
 
         rc = s->live_stream->pull_reconnect;
-        ngx_live_put_relay_reconnect(rc);
-        s->live_stream->pull_reconnect = NULL;
+		if(rc != NULL) {
+			ngx_live_put_relay_reconnect(rc);
+			s->live_stream->pull_reconnect = NULL;
+		}
     } else {
         if (ngx_rtmp_cmd_stream_init(s, v->name, v->args, 1) != NGX_OK) {
             return NGX_ERROR;

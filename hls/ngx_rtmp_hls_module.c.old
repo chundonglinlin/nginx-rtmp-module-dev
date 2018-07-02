@@ -85,8 +85,6 @@ typedef struct {
     uint64_t                            aframe_pts;
 
     ngx_rtmp_hls_variant_t             *var;
-
-	uint32_t							frag_time;
 } ngx_rtmp_hls_ctx_t;
 
 
@@ -123,19 +121,16 @@ typedef struct {
     ngx_str_t                           key_url;
     ngx_uint_t                          frags_per_key;
     ngx_str_t                           native_hls_args;
-    ngx_flag_t                          cntv_stream;
 } ngx_rtmp_hls_app_conf_t;
 
 
 #define NGX_RTMP_HLS_NAMING_SEQUENTIAL  1
 #define NGX_RTMP_HLS_NAMING_TIMESTAMP   2
 #define NGX_RTMP_HLS_NAMING_SYSTEM      3
-#define NGX_RTMP_HLS_NAMING_CNTV        4
 
 
 #define NGX_RTMP_HLS_SLICING_PLAIN      1
 #define NGX_RTMP_HLS_SLICING_ALIGNED    2
-#define NGX_RTMP_HLS_SLICING_CNTV       3
 
 
 #define NGX_RTMP_HLS_TYPE_LIVE          1
@@ -146,7 +141,6 @@ static ngx_conf_enum_t                  ngx_rtmp_hls_naming_slots[] = {
     { ngx_string("sequential"),         NGX_RTMP_HLS_NAMING_SEQUENTIAL },
     { ngx_string("timestamp"),          NGX_RTMP_HLS_NAMING_TIMESTAMP  },
     { ngx_string("system"),             NGX_RTMP_HLS_NAMING_SYSTEM     },
-    { ngx_string("cntv"),               NGX_RTMP_HLS_NAMING_CNTV       },
     { ngx_null_string,                  0 }
 };
 
@@ -154,7 +148,6 @@ static ngx_conf_enum_t                  ngx_rtmp_hls_naming_slots[] = {
 static ngx_conf_enum_t                  ngx_rtmp_hls_slicing_slots[] = {
     { ngx_string("plain"),              NGX_RTMP_HLS_SLICING_PLAIN },
     { ngx_string("aligned"),            NGX_RTMP_HLS_SLICING_ALIGNED  },
-	{ ngx_string("cntv"),               NGX_RTMP_HLS_SLICING_CNTV },
     { ngx_null_string,                  0 }
 };
 
@@ -327,13 +320,6 @@ static ngx_command_t ngx_rtmp_hls_commands[] = {
       ngx_rtmp_hls_parse_args,
       NGX_RTMP_APP_CONF_OFFSET,
       0,
-      NULL },
-
-    { ngx_string("hls_cntv_stream"),
-      NGX_RTMP_MAIN_CONF|NGX_RTMP_SRV_CONF|NGX_RTMP_APP_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_flag_slot,
-      NGX_RTMP_APP_CONF_OFFSET,
-      offsetof(ngx_rtmp_hls_app_conf_t, cntv_stream),
       NULL },
 
     ngx_null_command
@@ -1017,9 +1003,6 @@ ngx_rtmp_hls_get_fragment_id(ngx_rtmp_session_t *s, uint64_t ts)
     case NGX_RTMP_HLS_NAMING_SYSTEM:
         return (uint64_t) ngx_cached_time->sec * 1000 + ngx_cached_time->msec;
 
-    case NGX_RTMP_HLS_NAMING_CNTV:
-        return ctx->frag_time;
-
     default: /* NGX_RTMP_HLS_NAMING_SEQUENTIAL */
         return ctx->frag + ctx->nfrags;
     }
@@ -1536,28 +1519,12 @@ ngx_rtmp_hls_publish(ngx_rtmp_session_t *s, ngx_rtmp_publish_t *v)
     ngx_buf_t                      *b;
     size_t                          len;
     ngx_rtmp_hls_variant_t         *var;
-    ngx_uint_t                      n, name_len;
-    u_char                         *e, *g, *t, *cntv_name;
+    ngx_uint_t                      n;
 
     hacf = ngx_rtmp_get_module_app_conf(s, ngx_rtmp_hls_module);
     if (hacf == NULL || !hacf->hls || hacf->path.len == 0) {
         goto next;
     }
-
-    name_len = ngx_strlen(v->name);
-    e = v->name;
-    g = v->name + name_len;
-    cntv_name = ngx_pcalloc(s->connection->pool, name_len);
-    if (hacf->cntv_stream == 1) {
-        while(e < g) {
-            t = ngx_strlchr(e, g, '/');
-            if (t == NULL) {
-                break;
-            }
-            e = ++t;
-        }
-    }
-    ngx_memcpy(cntv_name, e, ngx_strlen(e));
 
     if (s->interprocess) {
         goto next;
@@ -1589,7 +1556,6 @@ ngx_rtmp_hls_publish(ngx_rtmp_session_t *s, ngx_rtmp_publish_t *v)
         }
     }
 
-	ctx->frag_time = ngx_time()/10;
     if (ctx->frags == NULL) {
         ctx->frags = ngx_pcalloc(s->connection->pool,
                                  sizeof(ngx_rtmp_hls_frag_t) *
@@ -1599,20 +1565,20 @@ ngx_rtmp_hls_publish(ngx_rtmp_session_t *s, ngx_rtmp_publish_t *v)
         }
     }
 
-    if (ngx_strstr(cntv_name, "..")) {
+    if (ngx_strstr(v->name, "..")) {
         ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
-                    "hls: bad stream name: '%s'", cntv_name);
+                      "hls: bad stream name: '%s'", v->name);
         return NGX_ERROR;
     }
 
-    ctx->name.len = ngx_strlen(cntv_name);
+    ctx->name.len = ngx_strlen(v->name);
     ctx->name.data = ngx_palloc(s->connection->pool, ctx->name.len + 1);
 
     if (ctx->name.data == NULL) {
         return NGX_ERROR;
     }
 
-    *ngx_cpymem(ctx->name.data, cntv_name, ctx->name.len) = 0;
+    *ngx_cpymem(ctx->name.data, v->name, ctx->name.len) = 0;
 
     len = hacf->path.len + 1 + ctx->name.len + sizeof(".m3u8");
     if (hacf->nested) {
@@ -1886,15 +1852,6 @@ ngx_rtmp_hls_update_fragment(ngx_rtmp_session_t *s, uint64_t ts,
             }
 
             break;
-		case NGX_RTMP_HLS_SLICING_CNTV:
-
-			if(f && ngx_time()/10 == ctx->frag_time) {
-                boundary = 0;
-			} else {
-				ctx->frag_time = ngx_time()/10;
-				boundary = 1;
-			}
-			break;
     }
 
     if (boundary || force) {
@@ -3100,7 +3057,6 @@ ngx_rtmp_hls_create_app_conf(ngx_conf_t *cf)
     conf->granularity = NGX_CONF_UNSET;
     conf->keys = NGX_CONF_UNSET;
     conf->frags_per_key = NGX_CONF_UNSET_UINT;
-    conf->cntv_stream = NGX_CONF_UNSET;
 
     return conf;
 }
@@ -3139,7 +3095,6 @@ ngx_rtmp_hls_merge_app_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_str_value(conf->key_path, prev->key_path, "");
     ngx_conf_merge_str_value(conf->key_url, prev->key_url, "");
     ngx_conf_merge_uint_value(conf->frags_per_key, prev->frags_per_key, 0);
-    ngx_conf_merge_value(conf->cntv_stream, prev->cntv_stream, 0);
 
     if (conf->fraglen) {
         conf->winfrags = conf->playlen / conf->fraglen;

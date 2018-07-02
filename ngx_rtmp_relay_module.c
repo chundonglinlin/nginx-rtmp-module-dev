@@ -28,6 +28,8 @@ static char *ngx_rtmp_relay_push_pull(ngx_conf_t *cf, ngx_command_t *cmd,
 static ngx_int_t ngx_rtmp_relay_var_pushobject(ngx_rtmp_session_t *s,
     ngx_rtmp_variable_value_t *v, uintptr_t data);
 
+static ngx_int_t ngx_rtmp_relay_init_process(ngx_cycle_t *cycle);
+
 
 /*                _____
  * =push=        |     |---publish--->
@@ -53,8 +55,17 @@ typedef struct {
     ngx_array_t                 pulls;         /* ngx_rtmp_relay_target_t * */
     ngx_array_t                 pushes;        /* ngx_rtmp_relay_target_t * */
     ngx_msec_t                  buflen;
+
+	//ngx_array_t					static_pulls;  /* ngx_rtmp_relay_target_t * */
+	ngx_array_t					static_events; /* ngx_event_t */
+
 } ngx_rtmp_relay_app_conf_t;
 
+typedef struct {
+	ngx_rtmp_conf_ctx_t			cctx;
+	ngx_rtmp_core_srv_conf_t	*cscf;
+	ngx_rtmp_relay_target_t		*target;
+}ngx_rtmp_relay_static_t;
 
 typedef struct {
     char                       *code;
@@ -139,7 +150,7 @@ ngx_module_t  ngx_rtmp_relay_module = {
     NGX_RTMP_MODULE,                        /* module type */
     NULL,                                   /* init master */
     NULL,                                   /* init module */
-    NULL,                                   /* init process */
+    ngx_rtmp_relay_init_process,            /* init process */
     NULL,                                   /* init thread */
     NULL,                                   /* exit thread */
     NULL,                                   /* exit process */
@@ -229,6 +240,16 @@ ngx_rtmp_relay_create_app_conf(ngx_conf_t *cf)
         return NULL;
     }
 
+	/*
+    if (ngx_array_init(&racf->static_pulls, cf->pool, 1, sizeof(void *)) != NGX_OK) {
+        return NULL;
+    }
+	*/
+
+    if (ngx_array_init(&racf->static_events, cf->pool, 1, sizeof(void *)) != NGX_OK) {
+        return NULL;
+    }
+
     racf->buflen = NGX_CONF_UNSET_MSEC;
 
     return racf;
@@ -244,6 +265,102 @@ ngx_rtmp_relay_merge_app_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_msec_value(conf->buflen, prev->buflen, 5000);
 
     return NGX_CONF_OK;
+}
+
+static void
+ngx_rtmp_relay_static_pull_connect(ngx_event_t *ev)
+{
+	u_char						*p, *end;
+	ngx_rtmp_play_t				v;
+	ngx_connection_t			*c;
+	ngx_rtmp_session_t			*s;
+	ngx_rtmp_addr_conf_t		*addr_conf;
+	
+	struct sockaddr_in			*sin;
+
+	ngx_rtmp_relay_static_t		*rs = ev->data;
+	//ngx_rtmp_relay_target_t		*target = rs->target;
+
+	/* get a connection */
+	c = ngx_rtmp_create_fake_connection(NULL, ngx_cycle->log);
+	if(c == NULL) {
+		return ;
+	}
+	
+	/* set connection sockaddr*/
+	sin = ngx_pcalloc(c->pool, sizeof(struct sockaddr_in));
+	sin->sin_addr.s_addr = ngx_inet_addr((u_char*)("127.0.0.1"), 9);
+
+	c->socklen = sizeof(struct sockaddr);
+	c->sockaddr = (struct sockaddr *)sin;
+	c->sockaddr->sa_family = AF_INET;
+
+	c->local_sockaddr = c->sockaddr;
+	c->local_socklen = c->socklen;
+
+	addr_conf = ngx_pcalloc(c->pool, sizeof(ngx_rtmp_addr_conf_t));
+	if(addr_conf == NULL) {
+		return ;
+	}
+
+	addr_conf->default_server = rs->cscf;
+	ngx_str_set(&addr_conf->addr_text, "static-pull");
+	
+	s = ngx_rtmp_init_fake_session(c, addr_conf);
+	if( s == NULL) {
+		return ;
+	}
+
+	s->live_type = NGX_HTTP_FLV_LIVE;
+	s->request = ngx_pcalloc(c->pool, sizeof(ngx_http_request_t));
+	s->request->connection = c;
+	s->static_pull_fake = 1;
+
+	c->data = s;
+
+	s->app_conf = rs->cctx.app_conf;
+
+	s->app = rs->target->app;
+	s->name = rs->target->name;
+	s->tc_url = rs->target->tc_url;
+	s->page_url = rs->target->page_url;
+
+	end = rs->target->tc_url.data + rs->target->tc_url.len;
+	p = ngx_strlchr(rs->target->tc_url.data, end, '?');
+	if(p != NULL) {
+		s->args.len = (end - p) - 1;
+		s->args.data = p + 1;
+
+		s->pargs.len = s->args.len;
+		s->pargs.data = s->args.data;
+	}
+
+	ngx_memzero(&v, sizeof(ngx_rtmp_play_t));
+	ngx_memcpy(v.name, rs->target->name.data, rs->target->name.len);
+
+	v.silent = 1;
+
+	/* get serverid */
+	ngx_rtmp_cmd_middleware_init(s);
+
+	/* get a live server */
+	s->live_server = ngx_live_create_server(&s->serverid);
+
+	s->stream.len = s->serverid.len + 1 + s->app.len + 1 + s->name.len;
+	s->stream.data = ngx_palloc(s->connection->pool, s->stream.len);
+	p = s->stream.data;
+
+	p = ngx_copy(p, s->serverid.data, s->serverid.len);
+	*p++ = '/';
+	p = ngx_copy(p, s->app.data, s->app.len);
+	*p++ = '/';
+	p = ngx_copy(p, s->name.data, s->name.len);
+
+	/* get a live stream */
+	s->live_stream = ngx_live_create_stream(&s->serverid, &s->stream);
+
+	ngx_rtmp_play_filter(s, &v);
+	//ngx_relay_pull(s, &target->name, target);
 }
 
 
@@ -598,6 +715,11 @@ ngx_rtmp_relay_create(ngx_rtmp_session_t *s, ngx_str_t *name,
             return NULL;
         }
     }
+
+	ctx->session->static_pull_fake = s->static_pull_fake;
+	if(s->relay == 1) {
+		ctx->session->second_relay = 1;
+	}
 
     ngx_memzero(pname, sizeof(pname));
     ngx_memzero(pargs, sizeof(pargs));
@@ -1462,14 +1584,17 @@ ngx_rtmp_relay_push_pull(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     ngx_rtmp_relay_target_t            *target, **t;
     ngx_url_t                          *u;
     ngx_uint_t                          i;
-    ngx_int_t                           is_pull;
-    u_char                             *p;
+    ngx_int_t                           is_pull, is_static;
+	ngx_event_t							**ee, *e;
+	ngx_rtmp_relay_static_t				*rs;
+    u_char                             *p, *last;
 
     value = cf->args->elts;
 
     racf = ngx_rtmp_conf_get_module_app_conf(cf, ngx_rtmp_relay_module);
 
     is_pull = (value[0].data[3] == 'l');
+	is_static = 0;
 
     target = ngx_pcalloc(cf->pool, sizeof(*target));
     if (target == NULL) {
@@ -1553,19 +1678,81 @@ ngx_rtmp_relay_push_pull(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #undef NGX_RTMP_RELAY_STR_PAR
 #undef NGX_RTMP_RELAY_NUM_PAR
 
+		if(n.len == sizeof("static") - 1 &&
+			ngx_strncasecmp(n.data, (u_char*) "static", n.len) == 0 &&
+			ngx_atoi(v.data, v.len))
+		{
+			is_static = 1;
+			continue;
+		}
+
         return "unsuppored parameter";
     }
 
-    if (is_pull) {
-        if (racf->pulls.nelts == NGX_RTMP_MAX_PUSH) {
-            return "too many pulls";
-        }
+	if (is_pull) {
 
-        target->idx = racf->pulls.nelts;
-        target->publishing = 1;
-        t = ngx_array_push(&racf->pulls);
+		if(is_static) {
+
+			if(target->app.len == 0) {
+				ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "app missing in static pull declaration");
+				return NGX_CONF_ERROR;
+			}
+
+			if(target->name.len == 0) {
+				ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "stream name missing in static pull declaration");
+				return NGX_CONF_ERROR;
+			}
+
+			ee = ngx_array_push(&racf->static_events);
+			if(ee == NULL) {
+				return NGX_CONF_ERROR;
+			}
+
+			e = ngx_pcalloc(cf->pool, sizeof(ngx_event_t));
+			if(e == NULL) {
+				return NGX_CONF_ERROR;
+			}
+
+			*ee = e;
+
+			rs = ngx_pcalloc(cf->pool, sizeof(ngx_rtmp_relay_static_t));
+			if( rs == NULL) {
+				return NGX_CONF_ERROR;
+			}
+
+			if(target->tc_url.len == 0) {
+				if(target->schema.len == 0) {
+					target->schema.len = 7;
+					target->schema.data = ngx_palloc(cf->pool, target->schema.len);
+					last = ngx_cpymem(target->schema.data, "rtmp", 4);
+				}
+
+				target->tc_url.len = 7 + target->url.url.len;
+				target->tc_url.data = ngx_palloc(cf->pool, target->tc_url.len);
+
+				last = ngx_cpymem(target->tc_url.data, target->schema.data, target->schema.len);
+				last = ngx_cpymem(last, "://", 3);
+				last = ngx_cpymem(last, target->url.url.data, target->url.url.len);
+			}
+
+			//target->publishing = 1;
+			rs->target = target;
+			e->data = rs;
+			e->log = &cf->cycle->new_log;
+			e->handler = ngx_rtmp_relay_static_pull_connect;
+		}
+
+		target->idx = racf->pulls.nelts;
+		target->publishing = 1;
+		t = ngx_array_push(&racf->pulls);
 
     } else {
+
+		if(is_static) {
+			ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "static push is no allowed");
+			return NGX_CONF_ERROR;
+		}
+
         if (racf->pushes.nelts == NGX_RTMP_MAX_PUSH) {
             return "too many pushes";
         }
@@ -1583,6 +1770,61 @@ ngx_rtmp_relay_push_pull(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     return NGX_CONF_OK;
 }
 
+static ngx_int_t
+ngx_rtmp_relay_init_process(ngx_cycle_t *cycle)
+{
+	ngx_rtmp_core_main_conf_t  *cmcf = ngx_rtmp_core_main_conf;
+	ngx_rtmp_core_srv_conf_t  **pcscf, *cscf;
+	ngx_rtmp_core_app_conf_t  **pcacf, *cacf;
+	ngx_rtmp_relay_app_conf_t  *racf;
+	ngx_uint_t                  n, m, k, hash, workers;
+	ngx_rtmp_relay_static_t    *rs;
+	ngx_event_t               **pevent, *event;
+	ngx_core_conf_t			   *ccf;
+
+	if (cmcf == NULL) {
+		return NGX_OK;
+	}
+
+	/* every worker get it's static  pulling by hash */
+
+	ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
+	workers = ccf->master ? ccf->worker_processes : 1;
+
+	pcscf = cmcf->servers.elts;
+	for (n = 0; n < cmcf->servers.nelts; ++n, ++pcscf) {
+
+		cscf = *pcscf;
+		pcacf = cscf->applications.elts;
+
+		for (m = 0; m < cscf->applications.nelts; ++m, ++pcacf) {
+
+			cacf = *pcacf;
+			racf = cacf->app_conf[ngx_rtmp_relay_module.ctx_index];
+			pevent = racf->static_events.elts;
+
+
+			for (k = 0; k < racf->static_events.nelts; ++k, ++pevent) {
+				event = *pevent;
+
+				rs = event->data;
+
+				hash = ngx_hash_key(rs->target->name.data, rs->target->name.len);
+				if(hash % workers != (ngx_uint_t)ngx_process_slot) {
+					continue;
+				}
+				
+				rs->cscf = cscf;
+				rs->cctx = *cscf->ctx;
+				rs->cctx.app_conf = cacf->app_conf;
+
+				ngx_post_event(event, &ngx_rtmp_init_queue);
+			}
+		}
+	}
+
+	return NGX_OK;
+}
 
 static ngx_int_t
 ngx_rtmp_relay_postconfiguration(ngx_conf_t *cf)

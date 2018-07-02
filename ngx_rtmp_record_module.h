@@ -20,7 +20,6 @@
 #define NGX_RTMP_RECORD_MANUAL          0x10
 
 
-
 typedef struct {
     ngx_str_t                           id;
     ngx_uint_t                          flags;
@@ -54,10 +53,6 @@ typedef struct {
     unsigned                            video_key_sent:1;
     unsigned                            audio:1;
     unsigned                            video:1;
-
-    /* qq flv */
-    ngx_file_t                          index_file;
-    uint32_t                            qq_flv_useq;
 } ngx_rtmp_record_rec_ctx_t;
 
 

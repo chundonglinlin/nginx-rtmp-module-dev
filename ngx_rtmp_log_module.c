@@ -227,7 +227,6 @@ ngx_rtmp_log_merge_app_conf(ngx_conf_t *cf, void *parent, void *child)
     if (log == NULL) {
         return NGX_CONF_ERROR;
     }
-    ngx_memzero(log, sizeof(*log));
 
     log->file = ngx_conf_open_file(cf->cycle, &ngx_rtmp_access_log);
     if (log->file == NULL) {
