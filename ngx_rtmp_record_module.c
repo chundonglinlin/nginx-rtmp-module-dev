@@ -980,10 +980,73 @@ next:
 
 ngx_map_t                       ngx_qq_flv_channnel_map;
 
+
+static ngx_int_t
+ngx_http_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
+{
+    u_char                                   *first, *last, *p;
+    ngx_str_t                                channel_name, timestamp;
+    ngx_qq_flv_index_t                       qq_flv_index;
+    ngx_file_t                               file
+
+    p = path->data;
+    first = path->data;
+    last = path->data + path->len;
+    while (p != last) {
+        if (*p == '/') {
+            first = p;
+        }
+        if (*p == '-' && *first == '/') {
+            ngx_cpymem(channel_name.data, first + 1, p - first - 1);
+            channel_name.len = p - first - 1;
+            first = p;
+        }
+        if (*p == '.' && *first == '-') {
+            ngx_cpymem(timestamp.data, first + 1, p - first - 1);
+            timestamp.len = p - first - 1;
+            break;
+        }
+
+    }
+    if (channel_name.len == 0 || timestamp.len == 0) {
+        return NGX_OK;
+    }
+
+    node = ngx_map_find(&ngx_qq_flv_channnel_map, (intptr_t) &channel_name);
+    if (node = NULL) {
+        //delete
+        return NGX_OK;
+    }
+
+    qq_flv_index = (ngx_qq_flv_index_t *)
+            ((char *) node - offsetof(ngx_qq_flv_index_t, node));
+
+    if (qq_flv_index == NULL) {
+        return NGX_OK;
+    }
+    
+    if (ngx_cached_time->sec - ngx_atoi(timestamp.data, timestamp.len) > qq_flv_index->backdelay) {
+        //delete
+        return NGX_OK;
+    }
+
+    file.fd = ngx_open_file(index_path.data, NGX_FILE_RDONLY, NGX_FILE_OPEN,
+                                        NGX_FILE_DEFAULT_ACCESS);
+
+    
+
+    return NGX_OK;
+}
+
 static ngx_int_t
 ngx_rtmp_record_read_qq_flv_index(ngx_rtmp_record_app_conf_t *racf)
 {
-    
+    ngx_tree_ctx_t                           tree;
+    tree.init_handler = NULL;
+    tree.file_handler = ngx_http_read_index_file;
+    tree.data = NULL;
+    tree.alloc = 0;
+
 }
 
 
