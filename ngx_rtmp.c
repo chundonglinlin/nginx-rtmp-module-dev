@@ -310,6 +310,9 @@ ngx_rtmp_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    /* init qq maps */
+    ngx_map_init(&ngx_qq_flv_channnel_map, ngx_map_hash_str, ngx_cmp_str);
+
     /* init rtmp variables */
     if (ngx_rtmp_variables_init_vars(cf) != NGX_OK) {
         return NGX_CONF_ERROR;
