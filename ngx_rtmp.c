@@ -78,11 +78,7 @@ ngx_module_t  ngx_rtmp_module = {
     NGX_MODULE_V1_PADDING
 };
 
-static ngx_int_t
-ngx_rtmp_read_qq_flv_index(ngx_qq_flv_index_t *channel_index)
-{
-    
-}
+ngx_map_t                            ngx_qq_flv_channnel_map;
 
 static ngx_int_t
 ngx_rtmp_qq_flv_map_init(ngx_conf_t *cf){

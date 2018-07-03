@@ -978,6 +978,15 @@ next:
     return next_close_stream(s, v);
 }
 
+ngx_map_t                       ngx_qq_flv_channnel_map;
+
+static ngx_int_t
+ngx_rtmp_record_read_qq_flv_index(ngx_rtmp_record_app_conf_t *racf)
+{
+    
+}
+
+
 static ngx_int_t
 ngx_rtmp_record_write_qq_flv_index(ngx_rtmp_session_t *s,
                             ngx_rtmp_record_rec_ctx_t *rctx,
