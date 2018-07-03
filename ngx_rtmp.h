@@ -24,6 +24,7 @@ typedef struct ngx_rtmp_session_s   ngx_rtmp_session_t;
 #include "ngx_rtmp_variables.h"
 #include "ngx_http_client.h"
 #include "ngx_netcall.h"
+#include "ngx_map.h"
 
 
 #if (NGX_WIN32)
@@ -1192,6 +1193,9 @@ extern ngx_module_t                         ngx_rtmp_module;
 extern ngx_module_t                         ngx_rtmp_mpegts_module;
 extern ngx_module_t                         ngx_hls_cmd_module;
 extern ngx_module_t                         ngx_rtmp_auto_pull_module;
+
+/* qq map */
+extern ngx_map_t                            ngx_qq_flv_channnel_map;
 
 
 #endif /* _NGX_RTMP_H_INCLUDED_ */
