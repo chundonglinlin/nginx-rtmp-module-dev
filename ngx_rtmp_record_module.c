@@ -986,8 +986,10 @@ ngx_http_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 {
     u_char                                   *first, *last, *p;
     ngx_str_t                                channel_name, timestamp;
-    ngx_qq_flv_index_t                       qq_flv_index;
-    ngx_file_t                               file
+    ngx_qq_flv_index_t                       *qq_flv_index;
+    ngx_qq_flv_block_index_t                 *qq_flv_block_index;
+    ngx_file_t                               file;
+    u_char                                   buf[NGX_QQ_FLV_INDEX_SIZE];
 
     p = path->data;
     first = path->data;
@@ -1033,7 +1035,18 @@ ngx_http_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
     file.fd = ngx_open_file(index_path.data, NGX_FILE_RDONLY, NGX_FILE_OPEN,
                                         NGX_FILE_DEFAULT_ACCESS);
 
-    
+
+
+    file.offset = 0;
+    ngx_read_file(&file, buf, NGX_QQ_FLV_INDEX_SIZE, file.offset);
+
+    if (buf[NGX_QQ_FLV_INDEX_SIZE - 1] == 1) {
+        qq_flv_block_index = ngx_alloc(sizeof(ngx_qq_flv_block_index_t), ctx->log);
+        ngx_cpymem(&qq_flv_block_index->qqflvhdr, buf, sizeof(ngx_qq_flv_header_t));
+        ngx_cpymem(&qq_flv_block_index->file_offset, buf + sizeof(ngx_qq_flv_header_t), 
+                   sizeof(off_t));
+        ngx_cpymem(&qq_flv_block_index->timestamp, timestamp.data, timestamp.len);
+    }
 
     return NGX_OK;
 }
