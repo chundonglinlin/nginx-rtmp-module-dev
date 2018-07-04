@@ -984,39 +984,45 @@ ngx_map_t                       ngx_qq_flv_channnel_map;
 static ngx_int_t
 ngx_http_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 {
-    u_char                                   *first, *last, *p;
+    u_char                                   *left, *last, *p;
     ngx_str_t                                channel_name, timestamp;
     ngx_qq_flv_index_t                       *qq_flv_index;
     ngx_qq_flv_block_index_t                 *qq_flv_block_index;
     ngx_file_t                               file;
     u_char                                   buf[NGX_QQ_FLV_INDEX_SIZE];
+    off_t                                    file_size;
 
     p = path->data;
-    first = path->data;
+    left = path->data;
     last = path->data + path->len;
     while (p != last) {
         if (*p == '/') {
-            first = p;
+            left = p;
         }
-        if (*p == '-' && *first == '/') {
-            ngx_cpymem(channel_name.data, first + 1, p - first - 1);
-            channel_name.len = p - first - 1;
-            first = p;
+        if (*p == '-' && *left == '/') {
+            ngx_cpymem(channel_name.data, left + 1, p - left - 1);
+            channel_name.len = p - left - 1;
+            left = p;
         }
-        if (*p == '.' && *first == '-') {
-            ngx_cpymem(timestamp.data, first + 1, p - first - 1);
-            timestamp.len = p - first - 1;
-            break;
+        if (*p == '.' && ) {
+            if (*left == '-') {
+                ngx_cpymem(timestamp.data, left + 1, p - left - 1);
+                timestamp.len = p - left - 1;
+            }
+            left = p;
         }
-
     }
     if (channel_name.len == 0 || timestamp.len == 0) {
         return NGX_OK;
     }
 
+    if (ngx_memcmp(left, ".index", last - left) != 0) {
+        return NGX_OK;
+    }
+
     node = ngx_map_find(&ngx_qq_flv_channnel_map, (intptr_t) &channel_name);
     if (node = NULL) {
-        //delete
+        ngx_delete_file(path->data);
         return NGX_OK;
     }
 
@@ -1028,24 +1034,47 @@ ngx_http_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
     }
     
     if (ngx_cached_time->sec - ngx_atoi(timestamp.data, timestamp.len) > qq_flv_index->backdelay) {
-        //delete
+        ngx_delete_file(path->data);
         return NGX_OK;
     }
 
-    file.fd = ngx_open_file(index_path.data, NGX_FILE_RDONLY, NGX_FILE_OPEN,
+    file.fd = ngx_open_file(path->data, NGX_FILE_RDONLY, NGX_FILE_OPEN,
                                         NGX_FILE_DEFAULT_ACCESS);
 
 
+    file_size = 0;
+
+#if (NGX_WIN32)
+    {
+        LONG  lo, hi;
+
+        lo = 0;
+        hi = 0;
+        lo = SetFilePointer(rctx->index_file.fd, lo, &hi, FILE_END);
+        file_size = (lo == INVALID_SET_FILE_POINTER ?
+                     (off_t) -1 : (off_t) hi << 32 | (off_t) lo);
+    }
+#else
+    file_size = lseek(rctx->index_file.fd, 0, SEEK_END);
+#endif
 
     file.offset = 0;
-    ngx_read_file(&file, buf, NGX_QQ_FLV_INDEX_SIZE, file.offset);
-
-    if (buf[NGX_QQ_FLV_INDEX_SIZE - 1] == 1) {
-        qq_flv_block_index = ngx_alloc(sizeof(ngx_qq_flv_block_index_t), ctx->log);
-        ngx_cpymem(&qq_flv_block_index->qqflvhdr, buf, sizeof(ngx_qq_flv_header_t));
-        ngx_cpymem(&qq_flv_block_index->file_offset, buf + sizeof(ngx_qq_flv_header_t), 
-                   sizeof(off_t));
-        qq_flv_block_index->timestamp = (time_t)ngx_atoi(timestamp.data, timestamp.len);
+    while (file.offset < file_size) {
+        if (file_size - file.offset < NGX_QQ_FLV_INDEX_SIZE) {
+            break;
+        }
+        if (ngx_read_file(&file, buf, NGX_QQ_FLV_INDEX_SIZE, file.offset) != NGX_QQ_FLV_INDEX_SIZE) {
+            break;
+        }
+        if (buf[NGX_QQ_FLV_INDEX_SIZE - 1] == 1) {
+            qq_flv_block_index = ngx_alloc(sizeof(ngx_qq_flv_block_index_t), ctx->log);
+            ngx_cpymem(&qq_flv_block_index->qqflvhdr, buf, sizeof(ngx_qq_flv_header_t));
+            ngx_cpymem(&qq_flv_block_index->file_offset, buf + sizeof(ngx_qq_flv_header_t), 
+                       sizeof(off_t));
+            qq_flv_block_index->timestamp = (time_t)ngx_atoi(timestamp.data, timestamp.len);
+        }else {
+            break;
+        }
     }
 
     return NGX_OK;
