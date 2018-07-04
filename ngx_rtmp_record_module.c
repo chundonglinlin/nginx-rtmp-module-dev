@@ -1045,8 +1045,7 @@ ngx_http_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
         ngx_cpymem(&qq_flv_block_index->qqflvhdr, buf, sizeof(ngx_qq_flv_header_t));
         ngx_cpymem(&qq_flv_block_index->file_offset, buf + sizeof(ngx_qq_flv_header_t), 
                    sizeof(off_t));
-        ngx_cpymem(&qq_flv_block_index->timestamp, (uint64_t)ngx_atoi(timestamp.data, timestamp.len),
-                   sizeof(uint64_t));
+        qq_flv_block_index->timestamp = (time_t)ngx_atoi(timestamp.data, timestamp.len);
     }
 
     return NGX_OK;
