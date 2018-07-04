@@ -1050,12 +1050,12 @@ ngx_http_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 
         lo = 0;
         hi = 0;
-        lo = SetFilePointer(rctx->index_file.fd, lo, &hi, FILE_END);
+        lo = SetFilePointer(file.fd, lo, &hi, FILE_END);
         file_size = (lo == INVALID_SET_FILE_POINTER ?
                      (off_t) -1 : (off_t) hi << 32 | (off_t) lo);
     }
 #else
-    file_size = lseek(rctx->index_file.fd, 0, SEEK_END);
+    file_size = lseek(file.fd, 0, SEEK_END);
 #endif
 
     file.offset = 0;
