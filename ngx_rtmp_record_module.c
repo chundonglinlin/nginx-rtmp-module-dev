@@ -1089,6 +1089,8 @@ ngx_rtmp_record_read_qq_flv_index(ngx_rtmp_record_app_conf_t *racf)
     tree.data = NULL;
     tree.alloc = 0;
 
+    ngx_walk_tree(&tree, &racf->path);
+
 }
 
 
