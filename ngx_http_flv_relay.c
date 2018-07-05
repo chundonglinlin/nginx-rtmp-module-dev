@@ -99,6 +99,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
         switch (state) {
 
         case qq_flv_usize0:
+            s->qqhdrtype = NGX_RTMP_HEADER_TYPE_QQ_FLV;
             qqflvhdr = &s->qqflvhdr;            
             qqflvhdr->usize = 0;
             pc = (u_char *) &qqflvhdr->usize;
@@ -600,28 +601,30 @@ done:
     if (rc == NGX_OK) {
         st = &s->in_streams[0];
         h = &st->hdr;
-        h->qqhdrtype = NGX_RTMP_HEADER_TYPE_QQ_FLV;
+        h->qqhdrtype = s->qqhdrtype;
+        if (s->qqflvhdr = NGX_RTMP_HEADER_TYPE_QQ_FLV) {
+            s->qqflvhdr = NGX_RTMP_HEADER_TYPE_DEFAULT;
+            qqflvhdr = &h->qqflvhdr;
+            qqflvhdr->usize = (&s->qqflvhdr)->usize;
+            qqflvhdr->huheadersize = (&s->qqflvhdr)->huheadersize;
+            qqflvhdr->huversion = (&s->qqflvhdr)->huversion;
+            qqflvhdr->uctype = (&s->qqflvhdr)->uctype;
+            qqflvhdr->uckeyframe = (&s->qqflvhdr)->uckeyframe;
+            qqflvhdr->usec = (&s->qqflvhdr)->usec;
+            qqflvhdr->useq = (&s->qqflvhdr)->useq;
+            qqflvhdr->usegid = (&s->qqflvhdr)->usegid;
+            qqflvhdr->ucheck = (&s->qqflvhdr)->ucheck;
 
-        qqflvhdr = &h->qqflvhdr;
-        qqflvhdr->usize = (&s->qqflvhdr)->usize;
-        qqflvhdr->huheadersize = (&s->qqflvhdr)->huheadersize;
-        qqflvhdr->huversion = (&s->qqflvhdr)->huversion;
-        qqflvhdr->uctype = (&s->qqflvhdr)->uctype;
-        qqflvhdr->uckeyframe = (&s->qqflvhdr)->uckeyframe;
-        qqflvhdr->usec = (&s->qqflvhdr)->usec;
-        qqflvhdr->useq = (&s->qqflvhdr)->useq;
-        qqflvhdr->usegid = (&s->qqflvhdr)->usegid;
-        qqflvhdr->ucheck = (&s->qqflvhdr)->ucheck;
-
-        printf("usize:\t%u\n", qqflvhdr->usize);
-        printf("huheadersize:\t%u\n", qqflvhdr->huheadersize);
-        printf("huversion:\t%u\n", qqflvhdr->huversion);
-        printf("uctype:\t%u\n", qqflvhdr->uctype);
-        printf("uckeyframe:\t%u\n", qqflvhdr->uckeyframe);
-        printf("usec:\t%u\n", qqflvhdr->usec);
-        printf("useq:\t%u\n", qqflvhdr->useq);
-        printf("usegid:\t%u\n", qqflvhdr->usegid);
-        printf("ucheck:\t%u\n", qqflvhdr->ucheck);
+            printf("usize:\t%u\n", qqflvhdr->usize);
+            printf("huheadersize:\t%u\n", qqflvhdr->huheadersize);
+            printf("huversion:\t%u\n", qqflvhdr->huversion);
+            printf("uctype:\t%u\n", qqflvhdr->uctype);
+            printf("uckeyframe:\t%u\n", qqflvhdr->uckeyframe);
+            printf("usec:\t%u\n", qqflvhdr->usec);
+            printf("useq:\t%u\n", qqflvhdr->useq);
+            printf("usegid:\t%u\n", qqflvhdr->usegid);
+            printf("ucheck:\t%u\n", qqflvhdr->ucheck);
+        }        
     }
 
     return rc;
