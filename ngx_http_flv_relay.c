@@ -602,8 +602,8 @@ done:
         st = &s->in_streams[0];
         h = &st->hdr;
         h->qqhdrtype = s->qqhdrtype;
-        if (s->qqflvhdr = NGX_RTMP_HEADER_TYPE_QQ_FLV) {
-            s->qqflvhdr = NGX_RTMP_HEADER_TYPE_DEFAULT;
+        if (s->qqhdrtype == NGX_RTMP_HEADER_TYPE_QQ_FLV) {
+            s->qqhdrtype = NGX_RTMP_HEADER_TYPE_DEFAULT;
             qqflvhdr = &h->qqflvhdr;
             qqflvhdr->usize = (&s->qqflvhdr)->usize;
             qqflvhdr->huheadersize = (&s->qqflvhdr)->huheadersize;
