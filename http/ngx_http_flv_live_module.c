@@ -222,6 +222,7 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
         ngx_rtmp_session_t *s)
 {
     ngx_rtmp_frame_t                   *frame;
+    ngx_qq_flv_header_t                *qqflvhdr;
     ngx_chain_t                        *head, **ll, *cl;
     u_char                             *p;
     size_t                              datasize, prev_tag_size;
@@ -259,6 +260,16 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
     /* fix timestamp */
     timestamp = frame->hdr.timestamp;
     timestamp = ngx_rtmp_timestamp_fix(s, timestamp, 0);
+
+    switch (frame->hdr.qqhdrtype) {
+
+    case NGX_RTMP_HEADER_TYPE_QQ_FLV:
+        qqflvhdr = &(frame->hdr.qqflvhdr);
+        break;        
+    case NGX_RTMP_HEADER_TYPE_QQ_HLS:
+        break;
+    }
+    
 
     /* first send */
     if (!r->header_sent) {

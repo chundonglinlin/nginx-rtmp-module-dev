@@ -1252,17 +1252,17 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
 
     /* write index */
     if (rracf->index) {
-      switch (h->qqhdrtype) {
+        switch (h->qqhdrtype) {
 
-      case NGX_RTMP_HEADER_TYPE_QQ_FLV:
-          if (ngx_rtmp_record_write_qq_flv_index(s, rctx, h, index_offset) == NGX_ERROR) {
-              return NGX_ERROR;
-          }
-          break;
-          
-      case NGX_RTMP_HEADER_TYPE_QQ_HLS:
-          break;
-      }
+        case NGX_RTMP_HEADER_TYPE_QQ_FLV:
+            if (ngx_rtmp_record_write_qq_flv_index(s, rctx, h, index_offset) == NGX_ERROR) {
+                return NGX_ERROR;
+            }
+            break;
+            
+        case NGX_RTMP_HEADER_TYPE_QQ_HLS:
+            break;
+        }
     }
 
     /* watch max size */
