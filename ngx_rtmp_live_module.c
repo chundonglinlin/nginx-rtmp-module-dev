@@ -794,6 +794,14 @@ ngx_rtmp_live_av(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
     ch.msid = NGX_RTMP_MSID;
     ch.csid = cs->csid;
     ch.type = h->type;
+    switch (h->qqhdrtype) {
+    case NGX_RTMP_HEADER_TYPE_QQ_FLV:
+        ch.qqflvhdr = h->qqflvhdr;
+        break;
+        
+    case NGX_RTMP_HEADER_TYPE_QQ_HLS:
+        break;
+    }
 
     /* fix timestamp */
     ch.timestamp = ngx_rtmp_timestamp_fix(s, ch.timestamp, 1);
