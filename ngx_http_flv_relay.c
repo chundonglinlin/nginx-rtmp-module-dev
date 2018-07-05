@@ -615,7 +615,7 @@ done:
             qqflvhdr->usegid = (&s->qqflvhdr)->usegid;
             qqflvhdr->ucheck = (&s->qqflvhdr)->ucheck;
 
-            printf("usize:\t%u\n", qqflvhdr->usize);
+            /*printf("usize:\t%u\n", qqflvhdr->usize);
             printf("huheadersize:\t%u\n", qqflvhdr->huheadersize);
             printf("huversion:\t%u\n", qqflvhdr->huversion);
             printf("uctype:\t%u\n", qqflvhdr->uctype);
@@ -623,7 +623,7 @@ done:
             printf("usec:\t%u\n", qqflvhdr->usec);
             printf("useq:\t%u\n", qqflvhdr->useq);
             printf("usegid:\t%u\n", qqflvhdr->usegid);
-            printf("ucheck:\t%u\n", qqflvhdr->ucheck);
+            printf("ucheck:\t%u\n", qqflvhdr->ucheck);*/
         }        
     }
 
