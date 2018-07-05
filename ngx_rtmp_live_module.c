@@ -1160,6 +1160,15 @@ ngx_rtmp_live_amf_data_send(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
     ch.msid = NGX_RTMP_MSID;
     ch.csid = NGX_RTMP_CSID_AMF;
     ch.type = h->type;
+    ch.qqhdrtype = h->qqhdrtype;
+    switch (h->qqhdrtype) {
+    case NGX_RTMP_HEADER_TYPE_QQ_FLV:
+        ch.qqflvhdr = h->qqflvhdr;
+        break;
+        
+    case NGX_RTMP_HEADER_TYPE_QQ_HLS:
+        break;
+    }
 
     avframe = ngx_rtmp_shared_alloc_frame(cscf->chunk_size, in, 0);
     ch.mlen = h->mlen;
