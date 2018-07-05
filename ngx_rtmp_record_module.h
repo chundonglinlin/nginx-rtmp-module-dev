@@ -57,7 +57,6 @@ typedef struct {
 
     /* qq flv */
     ngx_file_t                          index_file;
-    uint32_t                            qq_flv_useq;
 } ngx_rtmp_record_rec_ctx_t;
 
 

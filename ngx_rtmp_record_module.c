@@ -1110,11 +1110,8 @@ ngx_rtmp_record_write_qq_flv_index(ngx_rtmp_session_t *s,
     u_char                      hdr[NGX_QQ_FLV_INDEX_SIZE + 1], *p, *ph;
     ngx_qq_flv_header_t         *qqflvhdr;
     size_t                      i;
-
+    
     qqflvhdr = &h->qqflvhdr;
-    if (rctx->qq_flv_useq == qqflvhdr->useq) {
-        return NGX_OK;
-    }
     
     ph = hdr;
   #define NGX_RTMP_RECORD_QQ_FLV_HEADER(target, var)                              \
@@ -1146,9 +1143,6 @@ ngx_rtmp_record_write_qq_flv_index(ngx_rtmp_session_t *s,
 
         return NGX_ERROR;
     }
-
-    rctx->qq_flv_useq = qqflvhdr->useq;
-
     return NGX_OK;
 }
 
