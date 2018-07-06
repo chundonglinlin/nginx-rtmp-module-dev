@@ -58,6 +58,8 @@ static ngx_int_t ngx_rtmp_codec_copy_meta(ngx_rtmp_session_t *s,
        ngx_rtmp_header_t *h, ngx_chain_t *in);
 static ngx_int_t ngx_rtmp_codec_prepare_meta(ngx_rtmp_session_t *s,
        uint32_t timestamp);
+static ngx_int_t ngx_rtmp_codec_prepare_qq_meta(ngx_rtmp_session_t *s, uint32_t timestamp, 
+       ngx_flag_t qqhdrtype, ngx_qq_flv_header_t qqflvhdr);
 static void ngx_rtmp_codec_parse_aac_header(ngx_rtmp_session_t *s,
        ngx_chain_t *in);
 static void ngx_rtmp_codec_parse_avc_header(ngx_rtmp_session_t *s,
@@ -1984,7 +1986,7 @@ ngx_rtmp_codec_copy_meta(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
     }
 
 done:
-    return ngx_rtmp_codec_prepare_meta(s, h->timestamp);
+    return ngx_rtmp_codec_prepare_qq_meta(s, h->timestamp, h->qqhdrtype, h->qqflvhdr);
 }
 
 
@@ -1999,6 +2001,33 @@ ngx_rtmp_codec_prepare_meta(ngx_rtmp_session_t *s, uint32_t timestamp)
     ctx->meta->hdr.msid = NGX_RTMP_MSID;
     ctx->meta->hdr.type = NGX_RTMP_MSG_AMF_META;
     ctx->meta->hdr.timestamp = timestamp;
+
+    ctx->meta_version = ngx_rtmp_codec_get_next_version();
+
+    return NGX_OK;
+}
+
+static ngx_int_t
+ngx_rtmp_codec_prepare_qq_meta(ngx_rtmp_session_t *s, uint32_t timestamp, 
+                            ngx_flag_t qqhdrtype, ngx_qq_flv_header_t qqflvhdr)
+{
+    ngx_rtmp_codec_ctx_t  *ctx;
+
+    ctx = ngx_rtmp_get_module_ctx(s, ngx_rtmp_codec_module);
+
+    ctx->meta->hdr.csid = NGX_RTMP_CSID_AMF;
+    ctx->meta->hdr.msid = NGX_RTMP_MSID;
+    ctx->meta->hdr.type = NGX_RTMP_MSG_AMF_META;
+    ctx->meta->hdr.timestamp = timestamp;
+    ctx->meta->hdr.qqhdrtype = qqhdrtype;
+    switch (qqhdrtype) {
+    case NGX_RTMP_HEADER_TYPE_QQ_FLV:
+        ctx->meta->hdr.qqflvhdr = qqflvhdr;
+        break;
+        
+    case NGX_RTMP_HEADER_TYPE_QQ_HLS:
+        break;
+    }
 
     ctx->meta_version = ngx_rtmp_codec_get_next_version();
 
