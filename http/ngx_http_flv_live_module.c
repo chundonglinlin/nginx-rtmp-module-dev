@@ -285,13 +285,19 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
                 return NULL;
             }   
             head->buf->pos = qqflvhdr;
-            head->buf->last = qqflvhdr + sizeof(ngx_qq_flv_header_t) - 1;
-            
+            head->buf->last = &qqflvhdr->uckeyframe + 1;
+            for (ll = &head; *ll; ll = &(*ll)->next);
+            (*ll) = ngx_get_chainbuf(0, 0);
+            if (*ll == NULL) {
+                goto falied;
+            }
+            (*ll)->buf->pos = &qqflvhdr->usec;
+            (*ll)->buf->last = &qqflvhdr->ucheck + 4;
+            ll = &(*ll)->next;       
             break;
         case NGX_RTMP_HEADER_TYPE_QQ_HLS:
             break;
-        }
-        for (ll = &head; *ll; ll = &(*ll)->next);
+        }        
         (*ll) = ngx_get_chainbuf(0, 0);
         if (*ll == NULL) {
             goto falied;
@@ -321,8 +327,15 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
                 goto falied;
             }
             (*ll)->buf->pos = qqflvhdr;
-            (*ll)->buf->last = qqflvhdr + sizeof(ngx_qq_flv_header_t) - 1;
+            (*ll)->buf->last = &qqflvhdr->uckeyframe + 1;
             ll = &(*ll)->next;
+            (*ll) = ngx_get_chainbuf(0, 0);
+            if (*ll == NULL) {
+                goto falied;
+            }
+            (*ll)->buf->pos = &qqflvhdr->usec;
+            (*ll)->buf->last = &qqflvhdr->ucheck + 4;
+            ll = &(*ll)->next; 
             break;
         case NGX_RTMP_HEADER_TYPE_QQ_HLS:
             break;
