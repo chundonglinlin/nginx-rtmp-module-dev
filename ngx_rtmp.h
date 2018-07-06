@@ -119,7 +119,7 @@ typedef struct {
 #define NGX_RTMP_HEADER_TYPE_QQ_HLS     2
 
 #define NGX_QQ_FLV_INDEX_SIZE           35
-
+#define NGX_QQ_FLV_HEADER_SIZE          26
 
 
 typedef struct {

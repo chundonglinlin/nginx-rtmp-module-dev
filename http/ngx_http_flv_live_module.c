@@ -223,11 +223,14 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
 {
     ngx_rtmp_frame_t                   *frame;
     ngx_chain_t                        *head, **ll, *cl;
+    ngx_qq_flv_header_t                *qqflvhdr;
     u_char                             *p;
     size_t                              datasize, prev_tag_size;
     ngx_int_t                           rc;
     uint32_t                            timestamp;
+    ngx_flag_t                          flag;
 
+    flag = 1;
     frame = NULL;
     head = NULL;
     datasize = 0;
@@ -268,24 +271,87 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
             ngx_http_finalize_request(r, rc);
             return NULL;
         }
-
+        
         /* flv header */
-        head = ngx_get_chainbuf(0, 0);
-        if (head == NULL) {
-            return NULL;
+        if (flag) {
+            switch(frame->hdr.qqhdrtype) {
+            case NGX_RTMP_HEADER_TYPE_QQ_FLV:
+                head = ngx_get_chainbuf(NGX_QQ_FLV_HEADER_SIZE, 1);
+                if (head == NULL) {
+                    return NULL;
+                }
+                qqflvhdr = &(frame->hdr.qqflvhdr);
+                p = head->buf->pos;
+                p = ngx_cpymem(p, &qqflvhdr->usize, sizeof(qqflvhdr->usize));
+                p = ngx_cpymem(p, &qqflvhdr->huheadersize, sizeof(qqflvhdr->huheadersize));
+                p = ngx_cpymem(p, &qqflvhdr->huversion, sizeof(qqflvhdr->huversion));
+                p = ngx_cpymem(p, &qqflvhdr->uctype, sizeof(qqflvhdr->uctype));
+                p = ngx_cpymem(p, &qqflvhdr->uckeyframe, sizeof(qqflvhdr->uckeyframe));
+                p = ngx_cpymem(p, &qqflvhdr->usec, sizeof(qqflvhdr->usec));
+                p = ngx_cpymem(p, &qqflvhdr->useq, sizeof(qqflvhdr->useq));
+                p = ngx_cpymem(p, &qqflvhdr->usegid, sizeof(qqflvhdr->usegid));
+                p = ngx_cpymem(p, &qqflvhdr->ucheck, sizeof(qqflvhdr->ucheck));
+                head->buf->last = p;
+                break;
+            }
+            ll = &head->next;
+            *ll = ngx_get_chainbuf(0, 0);
+            if (*ll == NULL) {
+                goto falied;
+            }
+            if (s->filter == NGX_RTMP_FILTER_KEEPAUDIO) {
+                (*ll)->buf->pos = ngx_flv_live_audio_header;
+                (*ll)->buf->last = ngx_flv_live_audio_header
+                                      + sizeof(ngx_flv_live_audio_header) - 1;
+            } else {
+                (*ll)->buf->pos = ngx_flv_live_header;
+                (*ll)->buf->last = ngx_flv_live_header
+                                      + sizeof(ngx_flv_live_header) - 1;
+            }
+            ll = &(*ll)->next;
         }
-        if (s->filter == NGX_RTMP_FILTER_KEEPAUDIO) {
-            head->buf->pos = ngx_flv_live_audio_header;
-            head->buf->last = ngx_flv_live_audio_header
-                                  + sizeof(ngx_flv_live_audio_header) - 1;
-        } else {
-            head->buf->pos = ngx_flv_live_header;
-            head->buf->last = ngx_flv_live_header
-                                  + sizeof(ngx_flv_live_header) - 1;
+        else {
+            head = ngx_get_chainbuf(0, 0);
+            if (head == NULL) {
+                return NULL;
+            }         
+            if (s->filter == NGX_RTMP_FILTER_KEEPAUDIO) {
+                head->buf->pos = ngx_flv_live_audio_header;
+                head->buf->last = ngx_flv_live_audio_header
+                                      + sizeof(ngx_flv_live_audio_header) - 1;
+            } else {
+                head->buf->pos = ngx_flv_live_header;
+                head->buf->last = ngx_flv_live_header
+                                      + sizeof(ngx_flv_live_header) - 1;
+            }
         }
     }
 
     for (ll = &head; *ll; ll = &(*ll)->next);
+
+    if (frame->hdr.type == NGX_RTMP_MSG_AUDIO || frame->hdr.type == NGX_RTMP_MSG_VIDEO) {
+        switch(frame->hdr.qqhdrtype) {
+        case NGX_RTMP_HEADER_TYPE_QQ_FLV:
+            *ll = ngx_get_chainbuf(NGX_QQ_FLV_HEADER_SIZE, 1);
+            if (*ll == NULL) {
+                goto falied;
+            }
+            qqflvhdr = &(frame->hdr.qqflvhdr);
+            p = (*ll)->buf->pos;
+            p = ngx_cpymem(p, &qqflvhdr->usize, sizeof(qqflvhdr->usize));
+            p = ngx_cpymem(p, &qqflvhdr->huheadersize, sizeof(qqflvhdr->huheadersize));
+            p = ngx_cpymem(p, &qqflvhdr->huversion, sizeof(qqflvhdr->huversion));
+            p = ngx_cpymem(p, &qqflvhdr->uctype, sizeof(qqflvhdr->uctype));
+            p = ngx_cpymem(p, &qqflvhdr->uckeyframe, sizeof(qqflvhdr->uckeyframe));
+            p = ngx_cpymem(p, &qqflvhdr->usec, sizeof(qqflvhdr->usec));
+            p = ngx_cpymem(p, &qqflvhdr->useq, sizeof(qqflvhdr->useq));
+            p = ngx_cpymem(p, &qqflvhdr->usegid, sizeof(qqflvhdr->usegid));
+            p = ngx_cpymem(p, &qqflvhdr->ucheck, sizeof(qqflvhdr->ucheck));
+            (*ll)->buf->last = p;
+            ll = &(*ll)->next;
+            break;
+        }
+    }
 
     for (cl = frame->chain; cl; cl = cl->next) {
         datasize += (cl->buf->last - cl->buf->pos);
