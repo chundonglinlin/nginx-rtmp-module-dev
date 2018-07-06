@@ -257,28 +257,12 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
         return NULL;
     }
 
-    /* qq flv header */
-    switch (frame->hdr.qqhdrtype) {
-
-    case NGX_RTMP_HEADER_TYPE_QQ_FLV:
-        qqflvhdr = &(frame->hdr.qqflvhdr);
-        head = ngx_get_chainbuf(0, 0);
-        if (head == NULL) {
-            return NULL;
-        }   
-        head->buf->pos = qqflvhdr;
-        head->buf->last = qqflvhdr + sizeof(ngx_qq_flv_header_t) - 1;
-        for (ll = &head; *ll; ll = &(*ll)->next);
-        break;
-    case NGX_RTMP_HEADER_TYPE_QQ_HLS:
-        break;
-    }
+    
 
     /* fix timestamp */
     timestamp = frame->hdr.timestamp;
     timestamp = ngx_rtmp_timestamp_fix(s, timestamp, 0);
 
-    
     
 
     /* first send */
@@ -292,21 +276,59 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
 
         /* flv header */
         head = ngx_get_chainbuf(0, 0);
-        if (head == NULL) {
-            return NULL;
+
+        /* qq flv header */
+        switch (frame->hdr.qqhdrtype) {
+        case NGX_RTMP_HEADER_TYPE_QQ_FLV:
+            qqflvhdr = &(frame->hdr.qqflvhdr);
+            if (head == NULL) {
+                return NULL;
+            }   
+            head->buf->pos = qqflvhdr;
+            head->buf->last = qqflvhdr + sizeof(ngx_qq_flv_header_t) - 1;
+            
+            break;
+        case NGX_RTMP_HEADER_TYPE_QQ_HLS:
+            break;
+        }
+        for (ll = &head; *ll; ll = &(*ll)->next);
+        (*ll) = ngx_get_chainbuf(0, 0);
+        if (*ll == NULL) {
+            goto falied;
         }
         if (s->filter == NGX_RTMP_FILTER_KEEPAUDIO) {
-            head->buf->pos = ngx_flv_live_audio_header;
-            head->buf->last = ngx_flv_live_audio_header
+            (*ll)->buf->pos = ngx_flv_live_audio_header;
+            (*ll)->buf->last = ngx_flv_live_audio_header
                                   + sizeof(ngx_flv_live_audio_header) - 1;
         } else {
-            head->buf->pos = ngx_flv_live_header;
-            head->buf->last = ngx_flv_live_header
+            (*ll)->buf->pos = ngx_flv_live_header;
+            (*ll)->buf->last = ngx_flv_live_header
                                   + sizeof(ngx_flv_live_header) - 1;
         }
+        ll = &(*ll)->next;
     }
 
     for (ll = &head; *ll; ll = &(*ll)->next);
+
+    if (frame->hdr.type == NGX_RTMP_MSG_AUDIO || frame->hdr.type == NGX_RTMP_MSG_VIDEO) {
+        /* qq flv header */
+        switch (frame->hdr.qqhdrtype) {
+
+        case NGX_RTMP_HEADER_TYPE_QQ_FLV:
+            qqflvhdr = &(frame->hdr.qqflvhdr);
+            (*ll) = ngx_get_chainbuf(0, 0);
+            if (*ll == NULL) {
+                goto falied;
+            }
+            (*ll)->buf->pos = qqflvhdr;
+            (*ll)->buf->last = qqflvhdr + sizeof(ngx_qq_flv_header_t) - 1;
+            ll = &(*ll)->next;
+            break;
+        case NGX_RTMP_HEADER_TYPE_QQ_HLS:
+            break;
+        }
+    }
+
 
     for (cl = frame->chain; cl; cl = cl->next) {
         datasize += (cl->buf->last - cl->buf->pos);
