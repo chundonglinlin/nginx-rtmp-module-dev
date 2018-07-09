@@ -271,7 +271,7 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
         }
         
         /* flv header */
-        if (s->live_type == NGX_HTTP_FLV_SOURCE_LIVE) {
+        if (s->xHttpTrunk) {
             switch(frame->hdr.qqhdrtype) {
             case NGX_RTMP_HEADER_TYPE_QQ_FLV:
                 head = ngx_get_chainbuf(NGX_QQ_FLV_HEADER_SIZE, 1);
@@ -327,7 +327,7 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
 
     for (ll = &head; *ll; ll = &(*ll)->next);
 
-    if (s->live_type == NGX_HTTP_FLV_SOURCE_LIVE) {
+    if (s->xHttpTrunk) {
         if (frame->hdr.type == NGX_RTMP_MSG_AUDIO || frame->hdr.type == NGX_RTMP_MSG_VIDEO) {
             switch(frame->hdr.qqhdrtype) {
             case NGX_RTMP_HEADER_TYPE_QQ_FLV:
@@ -617,7 +617,7 @@ ngx_http_flv_live_parse(ngx_http_request_t *r, ngx_rtmp_session_t *s,
         ngx_rtmp_play_t *v)
 {
     ngx_http_flv_live_loc_conf_t       *hflcf;
-    ngx_str_t                           app, stream, internal;
+    ngx_str_t                           app, stream, internal, xHttpTrunk;
     size_t                              tcurl_len;
     u_char                             *p;
 
@@ -645,6 +645,18 @@ ngx_http_flv_live_parse(ngx_http_request_t *r, ngx_rtmp_session_t *s,
             ngx_strncmp(internal.data, (u_char *)"1", internal.len) == 0)
         {
             s->back_source = 1;
+        }
+    }
+
+    //xHttpTrunk = 1
+    //s->xHttpTrunk = 0;
+    if (ngx_http_arg(r, (u_char *) "xHttpTrunk", sizeof("xHttpTrunk") - 1,
+                     &xHttpTrunk) == NGX_OK)
+    {
+        if (xHttpTrunk.len == sizeof("1") - 1 ||
+            ngx_strncmp(xHttpTrunk.data, (u_char *)"1", xHttpTrunk.len) == 0)
+        {
+            s->xHttpTrunk = 1;
         }
     }
 
