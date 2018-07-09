@@ -794,9 +794,11 @@ ngx_rtmp_send_message(ngx_rtmp_session_t *s, ngx_rtmp_frame_t *out,
     ngx_rtmp_shared_acquire_frame(out);
 
 	if(s->static_pull_fake && !s->second_relay) {
-		ngx_rtmp_shared_free_frame(out);
-		++s->out_pos;
-		s->out_pos %= s->out_queue;
+		while(s->out_pos != s->out_last) {
+			ngx_rtmp_shared_free_frame(s->out[s->out_pos]);
+			++s->out_pos;
+			s->out_pos %= s->out_queue;
+		}
 		return NGX_OK;
 	}
 
@@ -811,9 +813,11 @@ ngx_rtmp_send_message(ngx_rtmp_session_t *s, ngx_rtmp_frame_t *out,
 send:
 
 	if(s->static_pull_fake && !s->second_relay) {
-		ngx_rtmp_shared_free_frame(out);
-		++s->out_pos;
-		s->out_pos %= s->out_queue;
+		while(s->out_pos != s->out_last) {
+			ngx_rtmp_shared_free_frame(s->out[s->out_pos]);
+			++s->out_pos;
+			s->out_pos %= s->out_queue;
+		}
 		return NGX_OK;
 	}
 

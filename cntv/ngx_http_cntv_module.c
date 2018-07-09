@@ -97,6 +97,7 @@ typedef struct {
 	ngx_int_t		end_time;
 
 	ngx_str_t		auth;
+	ngx_str_t		contentid;
 	ngx_str_t		session_id;
 	ngx_str_t		channel_name;
 
@@ -389,12 +390,16 @@ ngx_http_cntv_hls_timeback_handler(ngx_http_request_t *r)
 	channel = ctx->channel;
 
 	/* timeback request all from pc, so session id is arg auth, and single bitrate*/
-	if(ctx->auth.len == 0) {
-		ngx_log_error(NGX_LOG_ERR, log, 0, "pc timeback request, not found arg auth");
+	if(ctx->auth.len == 0 && ctx->contentid.len == 0) {
+		ngx_log_error(NGX_LOG_ERR, log, 0, "pc timeback request, not found arg auth or contentid");
 		return NGX_HTTP_BAD_REQUEST;
 	}
 
-	session_id = ctx->auth;
+	if(ctx->auth.len) {
+		session_id = ctx->auth;
+	} else {
+		session_id = ctx->contentid;
+	}
 
 	if(session_id.len > NGX_HTTP_CNTV_AUTH_LENGTH) {
 		session_id.len = NGX_HTTP_CNTV_AUTH_LENGTH;
@@ -1175,6 +1180,8 @@ ngx_http_cntv_get_session_id(ngx_http_request_t *r)
 	if(ngx_http_arg(r, (u_char *)"AUTH", 4, &ctx->auth) != NGX_OK) {
 		ngx_http_arg(r, (u_char *)"auth", 4, &ctx->auth);
 	}
+
+	ngx_http_arg(r, (u_char *)"contentid", 4, &ctx->contentid);
 
 	/*x-playback-session-id for iphone */
 	part = &r->headers_in.headers.part;

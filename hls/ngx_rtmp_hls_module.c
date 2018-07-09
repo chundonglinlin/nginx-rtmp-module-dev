@@ -2553,6 +2553,7 @@ ngx_rtmp_hls_video(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
     ngx_rtmp_hls_app_conf_t        *hacf;
     ngx_rtmp_hls_ctx_t             *ctx;
     ngx_rtmp_codec_ctx_t           *codec_ctx;
+    //u_char                         *p, *last;
     u_char                         *p;
     uint8_t                         fmt, ftype, htype, nal_type, src_nal_type;
     uint32_t                        len, rlen;
@@ -2561,6 +2562,7 @@ ngx_rtmp_hls_video(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
     ngx_rtmp_mpegts_frame_t         frame;
     ngx_uint_t                      nal_bytes;
     ngx_int_t                       aud_sent, sps_pps_sent, boundary;
+	//ngx_chain_t						*cl;
     static u_char                   buffer[NGX_RTMP_HLS_BUFSIZE];
 
     hacf = ngx_rtmp_get_module_app_conf(s, ngx_rtmp_hls_module);
@@ -2629,6 +2631,7 @@ ngx_rtmp_hls_video(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
     aud_sent = 0;
     sps_pps_sent = 0;
 
+//printf("--------------\n");
     while (in) {
         if (ngx_rtmp_hls_copy(s, &rlen, &p, nal_bytes, &in) != NGX_OK) {
             return NGX_OK;
@@ -2646,6 +2649,9 @@ ngx_rtmp_hls_video(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
         }
 
         nal_type = src_nal_type & 0x1f;
+
+
+//printf("msg len:%ld, nal bytes:%ld, nal_type:%ld\n",h->mlen, len, nal_type);
 
         ngx_log_debug2(NGX_LOG_DEBUG_RTMP, s->connection->log, 0,
                        "hls: h264 NAL type=%ui, len=%uD",
@@ -2708,11 +2714,31 @@ ngx_rtmp_hls_video(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
         *out.last++ = 1;
         *out.last++ = src_nal_type;
 
+		/*
+		if(nal_type ==  31) {
+			printf("31: %s\n", s->stream.data);
+		}
+		*/
+
         /* NAL body */
+		/*
+		if (nal_type == 31) {
+			len = 0;
+			if (in != NULL) {
+				last = in->buf->last;
+				len += last - p;
+				for(cl = in->next; cl; cl=cl->next) {
+					len += (cl->buf->last - cl->buf->pos);
+				}
+			}
+			len += 1;
+			printf("len = %ld\n", len);
+		}
+		*/
 
         if (out.end - out.last < (ngx_int_t) len) {
             ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
-                          "hls: not enough buffer for NAL");
+                          "hls: not enough buffer for NAL, %V", &s->stream);
             return NGX_OK;
         }
 
@@ -2722,6 +2748,7 @@ ngx_rtmp_hls_video(ngx_rtmp_session_t *s, ngx_rtmp_header_t *h,
 
         out.last += (len - 1);
     }
+//printf("--------------\n");
 
     ngx_memzero(&frame, sizeof(frame));
 

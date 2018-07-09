@@ -806,7 +806,7 @@ ngx_rtmp_cmd_close_stream(ngx_rtmp_session_t *s, ngx_rtmp_close_stream_t *v)
     ngx_live_stream_t                  *st;
     ngx_relay_reconnect_t              *reconnect;
 
-    ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "closeStream");
+    ngx_log_error(NGX_LOG_INFO, s->connection->log, 0, "closeStream,[ %V ]", &s->stream);
 
     if (s->live_stream == NULL) { /* stream before publish or play status */
         return NGX_OK;
