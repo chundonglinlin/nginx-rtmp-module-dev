@@ -998,9 +998,13 @@ ngx_http_relay_recv_body(void *request, ngx_http_request_t *hcr)
         if (l == NULL) {
             break;
         }
-
-        //n = ngx_http_relay_parse_flv(s, l->buf);
-        n = ngx_http_relay_parse_qq_flv(s, l->buf);
+        
+        if (s->xHttpTrunk) {
+            n = ngx_http_relay_parse_qq_flv(s, l->buf);
+        }
+        else {
+            n = ngx_http_relay_parse_flv(s, l->buf);
+        }
 
         if (n == NGX_ERROR) {
             ngx_log_error(NGX_LOG_ERR, s->connection->log, 0,
@@ -1119,6 +1123,7 @@ ngx_http_relay_recv(void *request, ngx_http_request_t *hcr)
     ngx_client_session_t       *cs;
     ngx_http_client_ctx_t      *ctx;
     ngx_uint_t                  status_code;
+    u_char                     *p, *last;
 
     s = request;
     ctx = hcr->ctx[0];
@@ -1133,6 +1138,18 @@ ngx_http_relay_recv(void *request, ngx_http_request_t *hcr)
     }
 
     ngx_rtmp_relay_publish_local(s);
+
+    /* xHttpTrunk */
+    if (p = ngx_strstr(hcr->request_line.data, (u_char *) "xHttpTrunk=")) {
+        p += sizeof("xHttpTrunk=") - 1;
+        last = ngx_strstr(p + 1, (u_char *) "&");
+        if (last == NULL) {
+            last = hcr->request_line.data + hcr->request_line.len;
+        }
+        if (ngx_strncmp(p, (u_char *) "1", last - p) == 0) {
+            s->xHttpTrunk = 1;
+        }
+    }
 
     ctx->read_handler = ngx_http_relay_recv_body;
     ngx_http_relay_recv_body(request, hcr);
