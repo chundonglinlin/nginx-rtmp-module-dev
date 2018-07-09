@@ -234,9 +234,10 @@ struct ngx_mpegts_frame_s {
 #pragma warning(disable:4200)
 #endif
 
-#define NGX_RTMP_LIVE       0
-#define NGX_HTTP_FLV_LIVE   1
-#define NGX_HLS_LIVE        2
+#define NGX_RTMP_LIVE                   0
+#define NGX_HTTP_FLV_LIVE               1
+#define NGX_HLS_LIVE                    2
+#define NGX_HTTP_FLV_SOURCE_LIVE        3
 
 
 typedef struct ngx_live_stream_s    ngx_live_stream_t;
@@ -328,8 +329,8 @@ struct ngx_rtmp_session_s {
     ngx_rtmp_frame_t               *sub_meta;
     ngx_uint_t                      sub_meta_version;
 
-    /* live type: 0- RTMP 1- http-flv 2- hls */
-    unsigned                        live_type:2;
+    /* live type: 0- RTMP 1- http-flv 2- hls 3- http-flv-source*/
+    unsigned                        live_type:3;
     ngx_uint_t                      status;
     ngx_http_request_t             *request;
     ngx_event_handler_pt            handler;

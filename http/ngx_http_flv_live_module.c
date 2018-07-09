@@ -228,9 +228,7 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
     size_t                              datasize, prev_tag_size;
     ngx_int_t                           rc;
     uint32_t                            timestamp;
-    ngx_flag_t                          flag;
 
-    flag = 1;
     frame = NULL;
     head = NULL;
     datasize = 0;
@@ -273,7 +271,7 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
         }
         
         /* flv header */
-        if (flag) {
+        if (s->live_type == NGX_HTTP_FLV_SOURCE_LIVE) {
             switch(frame->hdr.qqhdrtype) {
             case NGX_RTMP_HEADER_TYPE_QQ_FLV:
                 head = ngx_get_chainbuf(NGX_QQ_FLV_HEADER_SIZE, 1);
@@ -329,7 +327,7 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
 
     for (ll = &head; *ll; ll = &(*ll)->next);
 
-    if (flag) {
+    if (s->live_type == NGX_HTTP_FLV_SOURCE_LIVE) {
         if (frame->hdr.type == NGX_RTMP_MSG_AUDIO || frame->hdr.type == NGX_RTMP_MSG_VIDEO) {
             switch(frame->hdr.qqhdrtype) {
             case NGX_RTMP_HEADER_TYPE_QQ_FLV:
