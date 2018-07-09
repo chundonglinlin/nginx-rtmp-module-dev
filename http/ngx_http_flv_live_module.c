@@ -329,27 +329,29 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
 
     for (ll = &head; *ll; ll = &(*ll)->next);
 
-    if (frame->hdr.type == NGX_RTMP_MSG_AUDIO || frame->hdr.type == NGX_RTMP_MSG_VIDEO) {
-        switch(frame->hdr.qqhdrtype) {
-        case NGX_RTMP_HEADER_TYPE_QQ_FLV:
-            *ll = ngx_get_chainbuf(NGX_QQ_FLV_HEADER_SIZE, 1);
-            if (*ll == NULL) {
-                goto falied;
+    if (flag) {
+        if (frame->hdr.type == NGX_RTMP_MSG_AUDIO || frame->hdr.type == NGX_RTMP_MSG_VIDEO) {
+            switch(frame->hdr.qqhdrtype) {
+            case NGX_RTMP_HEADER_TYPE_QQ_FLV:
+                *ll = ngx_get_chainbuf(NGX_QQ_FLV_HEADER_SIZE, 1);
+                if (*ll == NULL) {
+                    goto falied;
+                }
+                qqflvhdr = &(frame->hdr.qqflvhdr);
+                p = (*ll)->buf->pos;
+                p = ngx_cpymem(p, &qqflvhdr->usize, sizeof(qqflvhdr->usize));
+                p = ngx_cpymem(p, &qqflvhdr->huheadersize, sizeof(qqflvhdr->huheadersize));
+                p = ngx_cpymem(p, &qqflvhdr->huversion, sizeof(qqflvhdr->huversion));
+                p = ngx_cpymem(p, &qqflvhdr->uctype, sizeof(qqflvhdr->uctype));
+                p = ngx_cpymem(p, &qqflvhdr->uckeyframe, sizeof(qqflvhdr->uckeyframe));
+                p = ngx_cpymem(p, &qqflvhdr->usec, sizeof(qqflvhdr->usec));
+                p = ngx_cpymem(p, &qqflvhdr->useq, sizeof(qqflvhdr->useq));
+                p = ngx_cpymem(p, &qqflvhdr->usegid, sizeof(qqflvhdr->usegid));
+                p = ngx_cpymem(p, &qqflvhdr->ucheck, sizeof(qqflvhdr->ucheck));
+                (*ll)->buf->last = p;
+                ll = &(*ll)->next;
+                break;
             }
-            qqflvhdr = &(frame->hdr.qqflvhdr);
-            p = (*ll)->buf->pos;
-            p = ngx_cpymem(p, &qqflvhdr->usize, sizeof(qqflvhdr->usize));
-            p = ngx_cpymem(p, &qqflvhdr->huheadersize, sizeof(qqflvhdr->huheadersize));
-            p = ngx_cpymem(p, &qqflvhdr->huversion, sizeof(qqflvhdr->huversion));
-            p = ngx_cpymem(p, &qqflvhdr->uctype, sizeof(qqflvhdr->uctype));
-            p = ngx_cpymem(p, &qqflvhdr->uckeyframe, sizeof(qqflvhdr->uckeyframe));
-            p = ngx_cpymem(p, &qqflvhdr->usec, sizeof(qqflvhdr->usec));
-            p = ngx_cpymem(p, &qqflvhdr->useq, sizeof(qqflvhdr->useq));
-            p = ngx_cpymem(p, &qqflvhdr->usegid, sizeof(qqflvhdr->usegid));
-            p = ngx_cpymem(p, &qqflvhdr->ucheck, sizeof(qqflvhdr->ucheck));
-            (*ll)->buf->last = p;
-            ll = &(*ll)->next;
-            break;
         }
     }
 
