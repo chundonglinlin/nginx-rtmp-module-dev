@@ -940,7 +940,6 @@ ngx_http_relay_parse_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
             }
 
             state = flv_tagsize0;
-            h->qqhdrtype = NGX_RTMP_HEADER_TYPE_DEFAULT;
             rc = NGX_OK;
             goto done;
         }
