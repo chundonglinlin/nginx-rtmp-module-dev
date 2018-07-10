@@ -141,6 +141,10 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
             qqflvhdr = &s->qqflvhdr;
             pc = (u_char *) &qqflvhdr->huheadersize;
             pc[1] = ch;
+            if (qqflvhdr->huheadersize != NGX_QQ_FLV_HEADER_SIZE) {
+                rc = NGX_ERROR;
+                goto done;
+            }
             state = qq_flv_huversion0;
             break;
 
