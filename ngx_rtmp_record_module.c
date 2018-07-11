@@ -1147,6 +1147,44 @@ ngx_rtmp_record_write_qq_flv_index(ngx_rtmp_session_t *s,
 }
 
 static ngx_int_t
+ngx_rtmp_record_insert_block_index(ngx_rtmp_session_t *s,
+                            ngx_rtmp_record_rec_ctx_t *rctx,
+                            ngx_rtmp_header_t *h, off_t index_offset)
+{
+    ngx_rtmp_record_ctx_t                    *ctx;
+    ngx_rtmp_record_app_conf_t               *rracf;
+    ngx_str_t                                 channel_name;
+    ngx_qq_flv_index_t                       *qq_flv_index;
+    ngx_qq_flv_block_index_t                 *qq_flv_block_index;
+
+    ctx = ngx_rtmp_get_module_ctx(s, ngx_rtmp_record_module);
+
+    channel_name.data = ctx->name;
+    channel_name.len = ngx_strlen(ctx->name);
+
+    node = ngx_map_find(&ngx_qq_flv_channnel_map, (intptr_t) &channel_name);
+    if (node = NULL) {
+        printf("node not found!\n");
+        return NGX_OK;
+    }
+    qq_flv_index = (ngx_qq_flv_index_t *)
+            ((char *) node - offsetof(ngx_qq_flv_index_t, node));
+    if (qq_flv_index == NULL) {
+        printf("qq_flv_index not found!\n");
+        return NGX_OK;
+    }
+
+    qq_flv_block_index = ngx_palloc(s->connection->pool, sizeof(ngx_qq_flv_block_index_t));
+
+    qq_flv_block_index->file_offset = index_offset;
+    qq_flv_block_index->timestamp = rctx->timestamp;
+    qq_flv_block_index->qqflvhdr = h->qqflvhdr;
+
+    ngx_queue_insert_tail(&qq_flv_index->index_queue, &qq_flv_block_index->q);
+    return NGX_OK;
+}
+
+static ngx_int_t
 ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
                             ngx_rtmp_record_rec_ctx_t *rctx,
                             ngx_rtmp_header_t *h, ngx_chain_t *in,
@@ -1251,19 +1289,20 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
     rctx->nframes += inc_nframes;
 
     /* write index */
-    if (rracf->index) {
-        switch (h->qqhdrtype) {
-
-        case NGX_RTMP_HEADER_TYPE_QQ_FLV:
+    switch (h->qqhdrtype) {
+    case NGX_RTMP_HEADER_TYPE_QQ_FLV:
+        ngx_rtmp_record_insert_block_index(s, rctx, h, index_offset);
+        if (rracf->index) {            
             if (ngx_rtmp_record_write_qq_flv_index(s, rctx, h, index_offset) == NGX_ERROR) {
                 return NGX_ERROR;
             }
-            break;
-            
-        case NGX_RTMP_HEADER_TYPE_QQ_HLS:
-            break;
-        }
+        }        
+        break;        
+    case NGX_RTMP_HEADER_TYPE_QQ_HLS:
+        break;
     }
+
+    
 
     /* watch max size */
     if ((rracf->max_size && rctx->file.offset >= (ngx_int_t) rracf->max_size) ||
