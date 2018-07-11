@@ -1146,6 +1146,25 @@ ngx_rtmp_record_write_qq_flv_index(ngx_rtmp_session_t *s,
     return NGX_OK;
 }
 
+static ngx_map_node_t *
+ngx_qq_create_channel(ngx_rtmp_session_t *s, ngx_str_t channel_name, 
+                          uint32_t backdelay, unsigned buname)
+{
+    ngx_qq_flv_index_t                       *qq_flv_index;
+    qq_flv_index = ngx_palloc(s->connection->pool, sizeof(ngx_qq_flv_index_t));
+    qq_flv_index->buname = buname ? 1 : 0;
+    if (qq_flv_index->buname) {
+        qq_flv_index->backdelay = (backdelay == 0) ? 15 : backdelay;
+    }
+    else {
+        qq_flv_index->backdelay = (backdelay == 0) ? 45 : backdelay;
+    }
+    qq_flv_index->channel_name = channel_name;
+    ngx_queue_init(&qq_flv_index->index_queue);
+    ngx_map_insert(&ngx_qq_flv_channnel_map, &qq_flv_index->node, 0);
+    return NGX_OK;
+}
+
 static ngx_int_t
 ngx_rtmp_record_insert_block_index(ngx_rtmp_session_t *s,
                             ngx_rtmp_record_rec_ctx_t *rctx,
@@ -1166,6 +1185,7 @@ ngx_rtmp_record_insert_block_index(ngx_rtmp_session_t *s,
     node = ngx_map_find(&ngx_qq_flv_channnel_map, (intptr_t) &channel_name);
     if (node == NULL) {
         //printf("node not found!\n");
+        node = ngx_qq_create_channel(s, channel_name, 0, 1);
         return NGX_OK;
     }
     qq_flv_index = (ngx_qq_flv_index_t *)
