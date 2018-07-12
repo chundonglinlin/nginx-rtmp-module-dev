@@ -18,11 +18,18 @@ static ngx_int_t ngx_http_qqflv_init_process(ngx_cycle_t *cycle);
 static ngx_command_t ngx_http_qqflv_commands[] = {
 
     { ngx_string("qqflv_zone"),
-      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE3,
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
       ngx_http_qqflv_zone,
       0,
       0,
       NULL
+    },
+    { ngx_string("qqflv_index_path"),
+      NGX_RTMP_MAIN_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      offsetof(ngx_http_qqflv_main_conf_t, path),
+      NULL 
     },
 
     ngx_null_command
@@ -81,10 +88,11 @@ ngx_http_qqflv_create_main_conf(ngx_conf_t *cf)
 static char *
 ngx_http_qqflv_init_main_conf(ngx_conf_t *cf, void *conf)
 {
-  //  ngx_http_req_status_main_conf_t *qmcf = conf;
+    ngx_http_qqflv_main_conf_t *qmcf = conf;
 
- //   ngx_conf_init_msec_value(rmcf->interval, 3000);
-  //  ngx_conf_init_value(rmcf->lock_time, 10);
+    if (qmcf->path.data[qmcf->path.len - 1] == '/') {
+	    qmcf->path.len -= 1;
+	}
 
     return NGX_CONF_OK;
 }
@@ -292,10 +300,26 @@ static char *ngx_http_qqflv_zone(ngx_conf_t *cf, ngx_command_t *cmd,
     return NGX_CONF_OK;
 }
 
+static ngx_int_t
+ngx_http_record_read_qqflv_index(ngx_cycle_t *cycle)
+{
+	
+
+    ngx_tree_ctx_t                           tree;
+    tree.init_handler = NULL;
+    tree.file_handler = ngx_http_read_index_file;
+    tree.data = NULL;
+    tree.alloc = 0;
+
+    ngx_walk_tree(&tree, &racf->path);
+
+}
+
+
 static ngx_int_t ngx_http_qqflv_init_process(ngx_cycle_t *cycle)
 {
 	if (ngx_worker == 0) {
-
+		ngx_http_record_read_qqflv_index(cycle);
 	}
     return NGX_OK;
 }
