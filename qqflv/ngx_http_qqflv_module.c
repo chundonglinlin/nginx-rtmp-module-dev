@@ -6,6 +6,14 @@
 
 
 static ngx_int_t ngx_http_qqflv_init(ngx_conf_t *cf);
+static void * ngx_http_qqflv_create_main_conf(ngx_conf_t *cf);
+static char * ngx_http_qqflv_init_main_conf(ngx_conf_t *cf, void *conf);
+static void * ngx_http_qqflv_create_loc_conf(ngx_conf_t *cf);
+static char * ngx_http_qqflv_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
+static ngx_int_t ngx_http_qqflv_init_zone(ngx_shm_zone_t *shm_zone, void *data);
+static char *ngx_http_qqflv_zone(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
+static ngx_int_t ngx_http_qqflv_init_process(ngx_cycle_t *cycle);
+
 
 static ngx_command_t ngx_http_qqflv_commands[] = {
 
@@ -22,26 +30,26 @@ static ngx_command_t ngx_http_qqflv_commands[] = {
 
 static ngx_http_module_t  ngx_http_qqflv_module_ctx = {
 	NULL,                                  /* preconfiguration */
-	ngx_http_qqflv_init,         	   /* postconfiguration */
+	NULL,         	                       /* postconfiguration */
 
-	ngx_http_qqflv_create_main_conf,    /* create main configuration */
-	ngx_http_qqflv_init_main_conf,      /* init main configuration */
+	ngx_http_qqflv_create_main_conf,       /* create main configuration */
+	ngx_http_qqflv_init_main_conf,         /* init main configuration */
 
-	NULL,                              /* create server configuration */
-	NULL,                              /* merge server configuration */
+	NULL,                                  /* create server configuration */
+	NULL,                                  /* merge server configuration */
 
-	ngx_http_qqflv_create_loc_conf,     /* create location configuration */
-	ngx_http_qqflv_merge_loc_conf	   /* merge location configuration */
+	ngx_http_qqflv_create_loc_conf,        /* create location configuration */
+	ngx_http_qqflv_merge_loc_conf	       /* merge location configuration */
 };
 
 ngx_module_t  ngx_http_qqflv_module = {
 	NGX_MODULE_V1,
-	&ngx_http_qqflv_module_ctx,         /* module context */
-	ngx_http_qqflv_commands,            /* module directives */
+	&ngx_http_qqflv_module_ctx,            /* module context */
+	ngx_http_qqflv_commands,               /* module directives */
 	NGX_HTTP_MODULE,                       /* module type */
 	NULL,                                  /* init master */
 	NULL,                                  /* init module */
-	NULL,            /* init process */
+	ngx_http_qqflv_init_process,           /* init process */
 	NULL,                                  /* init thread */
 	NULL,                                  /* exit thread */
 	NULL,                                  /* exit process */
@@ -50,7 +58,7 @@ ngx_module_t  ngx_http_qqflv_module = {
 };
 
 static void *
-ngx_http_req_status_create_main_conf(ngx_conf_t *cf)
+ngx_http_qqflv_create_main_conf(ngx_conf_t *cf)
 {
     ngx_http_qqflv_main_conf_t   *qmcf;
 
@@ -67,7 +75,7 @@ ngx_http_req_status_create_main_conf(ngx_conf_t *cf)
 
 	//main_conf = NULL;
 
-    return rmcf;
+    return qmcf;
 }
 
 static char *
@@ -149,7 +157,7 @@ static void ngx_qq_backdelay_timeout_handler(ngx_event_t *event)
     		tq = ngx_queue_next(tq))
     {
 		qq_flv_block_index = ngx_queue_data(tq, ngx_qq_flv_block_index_t, q);
-		if (qq_flv_block_index->timestamp > timestamp) {
+		if (qq_flv_block_index->timestamp > *timestamp) {
 			break;
 		}
 		
@@ -194,7 +202,7 @@ ngx_http_qqflv_init_zone(ngx_shm_zone_t *shm_zone, void *data)
         return NGX_ERROR;
     }
 
-    ctx->shpool->data = ctx->sh; ngx_cmp_str);
+    ctx->shpool->data = ctx->sh;
 
     ngx_map_init(&ctx->sh->map, ngx_map_hash_str, ngx_cmp_str);
 
@@ -216,12 +224,12 @@ ngx_http_qqflv_init_zone(ngx_shm_zone_t *shm_zone, void *data)
 }
 
 static char *ngx_http_qqflv_zone(ngx_conf_t *cf, ngx_command_t *cmd,
-        void *conf);
+        void *conf)
 {
     ssize_t                             size;
     ngx_str_t                          *value;
-    ngx_http_qqflv_zone_t         *ctx, **pctx;
-    ngx_http_qqflv_conf_t         *rmcf;
+    ngx_http_qqflv_zone_t              *ctx, **pctx;
+    ngx_http_qqflv_main_conf_t         *qmcf;
     ngx_http_compile_complex_value_t    ccv;
 
     value = cf->args->elts;
@@ -271,9 +279,9 @@ static char *ngx_http_qqflv_zone(ngx_conf_t *cf, ngx_command_t *cmd,
     ctx->shm_zone->init = ngx_http_qqflv_init_zone;
     ctx->shm_zone->data = ctx;
 
-    rmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_qqflv_module);
+    qmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_qqflv_module);
 
-    pctx = ngx_array_push(&rmcf->zones);
+    pctx = ngx_array_push(&qmcf->zones);
 
     if (pctx == NULL){
         return NGX_CONF_ERROR;
@@ -284,15 +292,10 @@ static char *ngx_http_qqflv_zone(ngx_conf_t *cf, ngx_command_t *cmd,
     return NGX_CONF_OK;
 }
 
-static ngx_int_t ngx_http_qqflv_init(ngx_conf_t *cf)
+static ngx_int_t ngx_http_qqflv_init_process(ngx_cycle_t *cycle)
 {
-	//ngx_map_init(&ngx_qq_flv_channnel_map, ngx_map_hash_str, ngx_cmp_str);
-	//ngx_qq_flv_channnel_event.handler = ngx_qq_backdelay_timeout_handler;
-	//ngx_add_timer(ngx_qq_backdelay_timeout_handler);
-	/*if( cntv_main_conf == NULL || cntv_main_conf->path.len == 0) {
-		return NGX_OK;
-	}*/
-	
-
-	return NGX_OK;
+	if (ngx_worker == 0) {
+		
+	}
+    return NGX_OK;
 }
