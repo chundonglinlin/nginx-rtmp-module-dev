@@ -1161,6 +1161,7 @@ ngx_qq_create_channel(ngx_rtmp_session_t *s, ngx_str_t channel_name,
     }
     qq_flv_index->channel_name = channel_name;
     ngx_queue_init(&qq_flv_index->index_queue);
+    qq_flv_index->node.raw_key = (intptr_t) &qq_flv_index->channel_name;
     ngx_map_insert(&ngx_qq_flv_channnel_map, &qq_flv_index->node, 0);
     return NGX_OK;
 }
@@ -1184,7 +1185,7 @@ ngx_rtmp_record_insert_block_index(ngx_rtmp_session_t *s,
 
     node = ngx_map_find(&ngx_qq_flv_channnel_map, (intptr_t) &channel_name);
     if (node == NULL) {
-        //printf("node not found!\n");
+        printf("node not found!\n");
         node = ngx_qq_create_channel(s, channel_name, 0, 1);
         return NGX_OK;
     }

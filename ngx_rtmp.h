@@ -1199,6 +1199,7 @@ extern ngx_module_t                         ngx_rtmp_auto_pull_module;
 
 /* qq map */
 extern ngx_map_t                            ngx_qq_flv_channnel_map;
+extern ngx_event_t                          ngx_qq_flv_channnel_event;
 
 
 #endif /* _NGX_RTMP_H_INCLUDED_ */

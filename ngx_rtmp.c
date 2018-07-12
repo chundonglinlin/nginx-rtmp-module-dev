@@ -78,13 +78,6 @@ ngx_module_t  ngx_rtmp_module = {
     NGX_MODULE_V1_PADDING
 };
 
-ngx_map_t                            ngx_qq_flv_channnel_map;
-
-static ngx_int_t
-ngx_rtmp_qq_flv_map_init(ngx_conf_t *cf){
-    ngx_map_init(&ngx_qq_flv_channnel_map, ngx_map_hash_str, ngx_cmp_str);
-    return NGX_OK;
-}
 
 static char *
 ngx_rtmp_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
@@ -316,11 +309,6 @@ ngx_rtmp_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             }
         }
     }
-
-    /* init qq maps */
-    if (ngx_rtmp_qq_flv_map_init(cf) != NGX_OK) {
-    }
-    
 
     /* init rtmp variables */
     if (ngx_rtmp_variables_init_vars(cf) != NGX_OK) {
