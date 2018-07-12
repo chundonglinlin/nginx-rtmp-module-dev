@@ -119,6 +119,7 @@ ngx_http_qqflv_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     return NGX_CONF_OK;
 }
+
 static void ngx_qq_backdelay_timeout_handler(ngx_event_t *event)
 {
 	uint32_t								 *timestamp;
@@ -283,8 +284,6 @@ static char *ngx_http_qqflv_zone(ngx_conf_t *cf, ngx_command_t *cmd,
     return NGX_CONF_OK;
 }
 
-ngx_map_t                            ngx_qq_flv_channnel_map;
-ngx_event_t							 ngx_qq_flv_channnel_event;
 static ngx_int_t ngx_http_qqflv_init(ngx_conf_t *cf)
 {
 	//ngx_map_init(&ngx_qq_flv_channnel_map, ngx_map_hash_str, ngx_cmp_str);
