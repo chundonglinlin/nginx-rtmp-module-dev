@@ -295,7 +295,7 @@ static char *ngx_http_qqflv_zone(ngx_conf_t *cf, ngx_command_t *cmd,
 static ngx_int_t ngx_http_qqflv_init_process(ngx_cycle_t *cycle)
 {
 	if (ngx_worker == 0) {
-		
+
 	}
     return NGX_OK;
 }
