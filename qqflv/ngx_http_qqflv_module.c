@@ -87,6 +87,7 @@ ngx_http_qqflv_init_main_conf(ngx_conf_t *cf, void *conf)
 	}
 
     ngx_map_init(&qmcf->channel_map, ngx_map_hash_str, ngx_cmp_str);
+    ngx_queue_init(&qmcf->idle_block_index);
 
     return NGX_CONF_OK;
 }
@@ -152,10 +153,10 @@ static void ngx_qq_backdelay_timeout_handler(ngx_event_t *event)
 
 static ngx_map_node_t *
 ngx_http_qqflv_create_channel(ngx_str_t channel_name, uint32_t backdelay, 
-							unsigned buname, ngx_map_t *channel_map, ngx_slab_pool_t *pool)
+							unsigned buname, ngx_map_t *channel_map, ngx_pool_t *pool)
 {
     ngx_qq_flv_index_t                       *qq_flv_index;
-    qq_flv_index = ngx_slab_alloc_locked(pool, sizeof(ngx_qq_flv_index_t));
+    qq_flv_index = ngx_palloc(pool, sizeof(ngx_qq_flv_index_t));
     qq_flv_index->buname = buname ? 1 : 0;
     if (qq_flv_index->buname) {
         qq_flv_index->backdelay = (backdelay == 0) ? 15 : backdelay;
@@ -191,18 +192,18 @@ ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
     p = path->data;
     left = path->data;
     last = path->data + path->len;
-    while (p != last) {
+    for (; p != last; p++) {
         if (*p == '/') {
             left = p;
         }
         if (*p == '-' && *left == '/') {
-            ngx_cpymem(channel_name.data, left + 1, p - left - 1);
+            channel_name.data = left + 1;
             channel_name.len = p - left - 1;
             left = p;
         }
         if (*p == '.') {
             if (*left == '-') {
-                ngx_cpymem(timestamp.data, left + 1, p - left - 1);
+                timestamp.data = left + 1;
                 timestamp.len = p - left - 1;
             }
             left = p;
@@ -212,20 +213,25 @@ ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
         return NGX_OK;
     }
 
+    printf("%s-%s\n", channel_name.data, timestamp.data);
+
     if (ngx_memcmp(left, ".index", last - left) != 0) {
         return NGX_OK;
     }
 
-    ngx_cpymem(flv_path.data, path->data, path->len);
+    flv_path.data = path->data;
     flv_path.len = path->len - 5;
 
-    channel_map = &pmcf->channel_map;
+    channel_map = &qmcf->channel_map;
 
     node = ngx_map_find(channel_map, (intptr_t) &channel_name);
     if (node == NULL) {
-    	ngx_delete_file(path->data);
-    	ngx_delete_file(flv_path.data);   
-        return NGX_OK;
+        printf("create\n");
+        ngx_http_qqflv_create_channel(channel_name, 0, 1, channel_map, qmcf->pool);
+    	node = ngx_map_find(channel_map, (intptr_t) &channel_name);
+        //ngx_delete_file(path->data);
+    	//ngx_delete_file(flv_path.data);   
+        //return NGX_OK;
 	}
 
 	qq_flv_index = (ngx_qq_flv_index_t *)
@@ -270,11 +276,11 @@ ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
             break;
         }
         if (buf[NGX_QQ_FLV_INDEX_SIZE - 1] == 1) {
-        	if (ngx_queue_empty(&pzone[i]->sh->idle_block_index)) {
+        	if (ngx_queue_empty(&qmcf->idle_block_index)) {
         		qq_flv_block_index = ngx_palloc(qmcf->pool, sizeof(ngx_qq_flv_block_index_t));
         	}
         	else {
-        		tq = ngx_queue_head(qmcf->idle_block_index);
+        		tq = ngx_queue_head(&qmcf->idle_block_index);
         		ngx_queue_remove(tq);
         		qq_flv_block_index = ngx_queue_data(tq, ngx_qq_flv_block_index_t, q);
         	}
@@ -286,6 +292,9 @@ ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
             
             READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->qqflvhdr.usize);
             READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->qqflvhdr.huheadersize);
+            if (qq_flv_block_index->qqflvhdr.huheadersize != NGX_QQ_FLV_HEADER_SIZE) {
+                return NGX_OK;
+            }
             READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->qqflvhdr.huversion);
             READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->qqflvhdr.uctype);
             READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->qqflvhdr.uckeyframe);
