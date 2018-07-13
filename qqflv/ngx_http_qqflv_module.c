@@ -240,6 +240,90 @@ ngx_http_qqflv_insert_block_index(ngx_str_t channel_name, time_t timestamp,
 }
 
 ngx_int_t
+ngx_http_qqflv_open_index_file(ngx_str_t *path, ngx_file_t *index_file, 
+                                    ngx_log_t *log, ngx_str_t *id, ngx_flag_t *lock_file)
+{
+    off_t                       file_size;
+    ngx_str_t                   index_path;
+    u_char                      *p;
+    static u_char               pbuf[NGX_MAX_PATH + 1];
+    ngx_err_t                   err;
+
+    p = pbuf;
+    p = ngx_cpymem(p, path->data, path->len);
+    p = ngx_cpymem(p, ".index", 6);
+
+    *p = 0;
+    index_path.data = pbuf;
+    index_path.len = p - pbuf;    
+
+    ngx_memzero(index_file, sizeof(ngx_file_t));
+    index_file->offset = 0;
+    index_file->log = log;
+    index_file->fd = ngx_open_file(index_path.data, NGX_FILE_RDWR, NGX_FILE_CREATE_OR_OPEN,
+                                        NGX_FILE_DEFAULT_ACCESS);
+    ngx_str_set(&index_file->name, "indexed");
+    if (index_file->fd == NGX_INVALID_FILE) {
+        err = ngx_errno;
+        if (err != NGX_ENOENT) {
+            ngx_log_error(NGX_LOG_CRIT, index_file->log, err,
+                          "record: %V failed to open index file '%V'",
+                          id, &index_path);
+        }
+        return NGX_OK;
+    }
+
+#if !(NGX_WIN32)
+      if (*lock_file) {
+          err = ngx_lock_fd(index_file->fd);
+          if (err) {
+              ngx_log_error(NGX_LOG_CRIT, index_file->log, err,
+                            "record: %V lock failed", id);
+          }
+      }
+#endif
+
+    file_size = 0;
+
+#if (NGX_WIN32)
+    {
+        LONG  lo, hi;
+
+        lo = 0;
+        hi = 0;
+        lo = SetFilePointer(index_file->fd, lo, &hi, FILE_END);
+        file_size = (lo == INVALID_SET_FILE_POINTER ?
+                     (off_t) -1 : (off_t) hi << 32 | (off_t) lo);
+    }
+#else
+    file_size = lseek(index_file->fd, 0, SEEK_END);
+#endif
+
+    if (file_size == (off_t) -1) {
+        ngx_log_error(NGX_LOG_CRIT, index_file->log, ngx_errno,
+                      "record: %V seek failed", id);
+        goto done;
+    }
+
+    if (file_size % NGX_QQ_FLV_INDEX_SIZE != 0) {
+        u_char edr[NGX_QQ_FLV_INDEX_SIZE];
+        ngx_memzero(edr, sizeof(edr));
+        index_file->offset = file_size;
+        if (ngx_write_file(index_file, edr, file_size % NGX_QQ_FLV_INDEX_SIZE, 
+                            index_file->offset) == NGX_ERROR) {
+              return NGX_ERROR;
+        }
+        file_size = index_file->offset;
+    }
+
+done:
+
+    index_file->offset = file_size;
+
+    return NGX_OK;
+}
+
+ngx_int_t
 ngx_http_qqflv_write_index_file(ngx_file_t *index_file, ngx_qq_flv_header_t *qqflvhdr,
                             off_t index_offset)
 {
@@ -427,7 +511,6 @@ ngx_http_qqflv_block_cmd(const ngx_queue_t *one, const ngx_queue_t *two)
 static ngx_int_t
 ngx_http_qqflv_read_index(ngx_http_qqflv_main_conf_t *qmcf)
 {   
-    //printf("%s-%d\n", qmcf->path.data, qmcf->path.len);
     ngx_tree_ctx_t                           tree;
     ngx_qq_flv_index_t                      *qq_flv_index;
     ngx_queue_t                             *tq;
@@ -443,15 +526,6 @@ ngx_http_qqflv_read_index(ngx_http_qqflv_main_conf_t *qmcf)
         qq_flv_index = ngx_queue_data(tq, ngx_qq_flv_index_t, q);
         ngx_queue_sort(&qq_flv_index->keyframe_queue, ngx_http_qqflv_keyframe_cmd);
         ngx_queue_sort(&qq_flv_index->index_queue, ngx_http_qqflv_block_cmd);
-
-        /*ngx_qq_flv_block_index_t *qq_flv_block_index;
-        ngx_queue_t *q;
-        for (q=ngx_queue_head(&qq_flv_index->keyframe_queue); q != ngx_queue_sentinel(&qq_flv_index->keyframe_queue);
-            q = ngx_queue_next(q))
-        {
-            qq_flv_block_index = ngx_queue_data(q, ngx_qq_flv_block_index_t, kq);
-            printf("useq=%u\n", qq_flv_block_index->qqflvhdr.useq);
-        }*/
     }
     return NGX_OK;
 }
