@@ -12,7 +12,6 @@
 #include "ngx_rtmp_codec_module.h"
 #include "ngx_rtmp_record_module.h"
 
-
 ngx_rtmp_record_done_pt             ngx_rtmp_record_done;
 
 
@@ -20,7 +19,6 @@ static ngx_rtmp_publish_pt          next_publish;
 static ngx_rtmp_close_stream_pt     next_close_stream;
 static ngx_rtmp_stream_begin_pt     next_stream_begin;
 static ngx_rtmp_stream_eof_pt       next_stream_eof;
-
 
 static char *ngx_rtmp_record_recorder(ngx_conf_t *cf, ngx_command_t *cmd,
        void *conf);
@@ -42,7 +40,8 @@ static ngx_int_t ngx_rtmp_record_node_close(ngx_rtmp_session_t *s,
 static void  ngx_rtmp_record_make_path(ngx_rtmp_session_t *s,
        ngx_rtmp_record_rec_ctx_t *rctx, ngx_str_t *path);
 static ngx_int_t ngx_rtmp_record_init(ngx_rtmp_session_t *s);
-
+ngx_map_t                            *ngx_qqflv_channnel_map;
+ngx_queue_t                          *ngx_qqflv_idle_block_index;       
 
 static ngx_conf_bitmask_t  ngx_rtmp_record_mask[] = {
     { ngx_string("off"),                NGX_RTMP_RECORD_OFF         },
@@ -1171,6 +1170,7 @@ ngx_rtmp_record_insert_block_index(ngx_rtmp_session_t *s,
                             ngx_rtmp_record_rec_ctx_t *rctx,
                             ngx_rtmp_header_t *h, off_t index_offset)
 {
+    printf("123aaa\n");
     ngx_rtmp_record_ctx_t                    *ctx;
     ngx_rtmp_record_app_conf_t               *rracf;
     ngx_str_t                                 channel_name;
@@ -1183,19 +1183,27 @@ ngx_rtmp_record_insert_block_index(ngx_rtmp_session_t *s,
     channel_name.data = ctx->name;
     channel_name.len = ngx_strlen(ctx->name);
 
-    node = ngx_map_find(&ngx_qq_flv_channnel_map, (intptr_t) &channel_name);
+    node = ngx_map_find(ngx_qq_flv_channnel_map, (intptr_t) &channel_name);
     if (node == NULL) {
         printf("node not found!\n");
-        node = ngx_qq_create_channel(s, channel_name, 0, 1);
+        //node = ngx_qq_create_channel(s, channel_name, 0, 1);
         return NGX_OK;
     }
     qq_flv_index = (ngx_qq_flv_index_t *)
             ((char *) node - offsetof(ngx_qq_flv_index_t, node));
     if (qq_flv_index == NULL) {
-        //printf("qq_flv_index not found!\n");
+        printf("qq_flv_index not found!\n");
         return NGX_OK;
     }
 
+    if (ngx_queue_empty(ngx_qqflv_idle_block_index)) {
+      qq_flv_block_index = ngx_palloc(qmcf->pool, sizeof(ngx_qq_flv_block_index_t));
+    }
+    else {
+      tq = ngx_queue_head(&qmcf->idle_block_index);
+      ngx_queue_remove(tq);
+      qq_flv_block_index = ngx_queue_data(tq, ngx_qq_flv_block_index_t, q);
+    }
     qq_flv_block_index = ngx_palloc(s->connection->pool, sizeof(ngx_qq_flv_block_index_t));
 
     qq_flv_block_index->file_offset = index_offset;
@@ -1203,6 +1211,7 @@ ngx_rtmp_record_insert_block_index(ngx_rtmp_session_t *s,
     qq_flv_block_index->qqflvhdr = h->qqflvhdr;
 
     ngx_queue_insert_tail(&qq_flv_index->index_queue, &qq_flv_block_index->q);
+
     return NGX_OK;
 }
 

@@ -13,6 +13,8 @@ static char * ngx_http_qqflv_merge_loc_conf(ngx_conf_t *cf, void *parent, void *
 static ngx_int_t ngx_http_qqflv_init_process(ngx_cycle_t *cycle);
 static ngx_int_t ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path);
 static ngx_int_t ngx_http_qqflv_read_index(ngx_http_qqflv_main_conf_t *qmcf);
+ngx_map_t                            *ngx_qqflv_channnel_map;
+ngx_queue_t                          *ngx_qqflv_idle_block_index;       
 
 static ngx_command_t ngx_http_qqflv_commands[] = {
 
@@ -88,6 +90,9 @@ ngx_http_qqflv_init_main_conf(ngx_conf_t *cf, void *conf)
 
     ngx_map_init(&qmcf->channel_map, ngx_map_hash_str, ngx_cmp_str);
     ngx_queue_init(&qmcf->idle_block_index);
+
+    ngx_qqflv_channnel_map = &qmcf->channel_map;
+    ngx_qqflv_idle_block_index = &qmcf->idle_block_index;
 
     return NGX_CONF_OK;
 }
@@ -310,7 +315,7 @@ ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 
             qq_flv_block_index->timestamp = (time_t)ngx_atoi(timestamp.data, timestamp.len);
 
-            printf("uszie: %u\n", qq_flv_block_index->qqflvhdr.usize);
+           /* printf("uszie: %u\n", qq_flv_block_index->qqflvhdr.usize);
             printf("huheadersize: %u\n", qq_flv_block_index->qqflvhdr.huheadersize);
             printf("huversion: %u\n", qq_flv_block_index->qqflvhdr.huversion);
             printf("uctype: %u\n", qq_flv_block_index->qqflvhdr.uctype);
@@ -320,7 +325,7 @@ ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
             printf("usegid: %u\n", qq_flv_block_index->qqflvhdr.usegid);
             printf("ucheck: %u\n", qq_flv_block_index->qqflvhdr.ucheck);
             printf("file_offset: %u\n", qq_flv_block_index->file_offset);
-           	printf("timestamp: %u\n", qq_flv_block_index->timestamp);
+           	printf("timestamp: %u\n", qq_flv_block_index->timestamp);*/
 
             ngx_queue_insert_tail(&qq_flv_index->index_queue, &qq_flv_block_index->q);
             block_key.data = &qq_flv_block_index->qqflvhdr.useq;
@@ -340,8 +345,8 @@ ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 
 static ngx_int_t
 ngx_http_qqflv_read_index(ngx_http_qqflv_main_conf_t *qmcf)
-{	
-	printf("%s-%d", qmcf->path.data, qmcf->path.len);
+{   
+    printf("%s-%d", qmcf->path.data, qmcf->path.len);
     ngx_tree_ctx_t                           tree;
     tree.init_handler = NULL;
     tree.file_handler = ngx_http_qqflv_read_index_file;
@@ -349,6 +354,8 @@ ngx_http_qqflv_read_index(ngx_http_qqflv_main_conf_t *qmcf)
     tree.alloc = 0;
     ngx_walk_tree(&tree, &qmcf->path);
 }
+
+
 
 static ngx_int_t ngx_http_qqflv_init_process(ngx_cycle_t *cycle)
 {
