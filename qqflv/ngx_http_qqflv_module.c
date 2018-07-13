@@ -396,7 +396,7 @@ ngx_http_qqflv_block_cmd(const ngx_queue_t *one, const ngx_queue_t *two)
 static ngx_int_t
 ngx_http_qqflv_read_index(ngx_http_qqflv_main_conf_t *qmcf)
 {   
-    printf("%s-%d\n", qmcf->path.data, qmcf->path.len);
+    //printf("%s-%d\n", qmcf->path.data, qmcf->path.len);
     ngx_tree_ctx_t                           tree;
     tree.init_handler = NULL;
     tree.file_handler = ngx_http_qqflv_read_index_file;
