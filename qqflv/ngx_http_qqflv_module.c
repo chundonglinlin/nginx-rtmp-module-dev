@@ -166,6 +166,8 @@ ngx_http_qqflv_create_channel(ngx_str_t channel_name, uint32_t backdelay,
     }
     qq_flv_index->channel_name = channel_name;
     ngx_queue_init(&qq_flv_index->index_queue);
+    ngx_queue_init(&qq_flv_index->keyframe_queue);
+    ngx_map_init(&qq_flv_index->block_map, ngx_map_hash_str, ngx_cmp_str);
     qq_flv_index->node.raw_key = (intptr_t) &qq_flv_index->channel_name;
     ngx_map_insert(channel_map, &qq_flv_index->node, 0);
     return NGX_OK;
@@ -321,6 +323,11 @@ ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
            	printf("timestamp: %u\n", qq_flv_block_index->timestamp);
 
             ngx_queue_insert_tail(&qq_flv_index->index_queue, &qq_flv_block_index->q);
+            qq_flv_block_index->node.raw_key = (intptr_t) &qq_flv_block_index->useq;
+            ngx_map_insert(channel_map, &qq_flv_block_index->node, 0);
+            if (qq_flv_block_index->qqflvhdr.uckeyframe == 2) {
+                ngx_queue_insert_tail(&qq_flv_index->keyframe_queue, &qq_flv_block_index->kq);
+            }
         }else {
             break;
         }

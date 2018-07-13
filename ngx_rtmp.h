@@ -123,12 +123,12 @@ typedef struct {
 
 typedef struct {
     ngx_str_t                       channel_name;
-    ngx_queue_t                     index_queue;
-    ngx_queue_t                     keyframe_queue;
     uint32_t                        backdelay;               //缓冲时间，qqlive默认为15，qt为45，回看频道由回看列表决定
     unsigned                        buname:1;                //0-qqlive,1-qt  
     ngx_map_node_t                  node;
     ngx_map_t                       block_map;
+    ngx_queue_t                     index_queue;
+    ngx_queue_t                     keyframe_queue;
 } ngx_qq_flv_index_t;
 
 typedef struct {
