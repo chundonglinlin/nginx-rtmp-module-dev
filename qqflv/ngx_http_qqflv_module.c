@@ -177,7 +177,7 @@ static ngx_int_t
 ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
 {
 	u_char                                   *left, *last, *p;
-    ngx_str_t                                 channel_name, timestamp, flv_path;
+    ngx_str_t                                 channel_name, timestamp, flv_path, block_key;
     ngx_qq_flv_index_t                       *qq_flv_index;
     ngx_qq_flv_block_index_t                 *qq_flv_block_index;
     ngx_file_t                                file;
@@ -243,11 +243,11 @@ ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
     	return NGX_OK;
 	}
 
-	if (ngx_cached_time->sec - ngx_atoi(timestamp.data, timestamp.len) > qq_flv_index->backdelay) {
+	/*if (ngx_cached_time->sec - ngx_atoi(timestamp.data, timestamp.len) > qq_flv_index->backdelay) {
     	ngx_delete_file(path->data);
     	ngx_delete_file(flv_path.data);        	
     	return NGX_OK;
-	}
+	}*/
 
 	file.fd = ngx_open_file(path->data, NGX_FILE_RDONLY, NGX_FILE_OPEN,
                                     NGX_FILE_DEFAULT_ACCESS);
@@ -323,8 +323,10 @@ ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
            	printf("timestamp: %u\n", qq_flv_block_index->timestamp);
 
             ngx_queue_insert_tail(&qq_flv_index->index_queue, &qq_flv_block_index->q);
-            qq_flv_block_index->node.raw_key = (intptr_t) &qq_flv_block_index->useq;
-            ngx_map_insert(channel_map, &qq_flv_block_index->node, 0);
+            block_key.data = &qq_flv_block_index->qqflvhdr.useq;
+            block_key.len = sizeof(uint32_t);
+            qq_flv_block_index->node.raw_key = (intptr_t) &block_key;
+            ngx_map_insert(&qq_flv_index->block_map, &qq_flv_block_index->node, 0);
             if (qq_flv_block_index->qqflvhdr.uckeyframe == 2) {
                 ngx_queue_insert_tail(&qq_flv_index->keyframe_queue, &qq_flv_block_index->kq);
             }
@@ -346,7 +348,6 @@ ngx_http_qqflv_read_index(ngx_http_qqflv_main_conf_t *qmcf)
     tree.data = qmcf;
     tree.alloc = 0;
     ngx_walk_tree(&tree, &qmcf->path);
-
 }
 
 static ngx_int_t ngx_http_qqflv_init_process(ngx_cycle_t *cycle)
