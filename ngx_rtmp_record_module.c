@@ -11,6 +11,7 @@
 #include "ngx_rtmp_netcall_module.h"
 #include "ngx_rtmp_codec_module.h"
 #include "ngx_rtmp_record_module.h"
+#include "qqflv/ngx_http_qqflv_module.h"
 
 ngx_rtmp_record_done_pt             ngx_rtmp_record_done;
 
@@ -1166,56 +1167,6 @@ ngx_qq_create_channel(ngx_rtmp_session_t *s, ngx_str_t channel_name,
 }
 
 static ngx_int_t
-ngx_rtmp_record_insert_block_index(ngx_rtmp_session_t *s,
-                            ngx_rtmp_record_rec_ctx_t *rctx,
-                            ngx_rtmp_header_t *h, off_t index_offset)
-{
-    printf("123aaa\n");
-    ngx_rtmp_record_ctx_t                    *ctx;
-    ngx_rtmp_record_app_conf_t               *rracf;
-    ngx_str_t                                 channel_name;
-    ngx_qq_flv_index_t                       *qq_flv_index;
-    ngx_qq_flv_block_index_t                 *qq_flv_block_index;
-    ngx_map_node_t                           *node;
-
-    ctx = ngx_rtmp_get_module_ctx(s, ngx_rtmp_record_module);
-
-    channel_name.data = ctx->name;
-    channel_name.len = ngx_strlen(ctx->name);
-
-    node = ngx_map_find(ngx_qq_flv_channnel_map, (intptr_t) &channel_name);
-    if (node == NULL) {
-        printf("node not found!\n");
-        //node = ngx_qq_create_channel(s, channel_name, 0, 1);
-        return NGX_OK;
-    }
-    qq_flv_index = (ngx_qq_flv_index_t *)
-            ((char *) node - offsetof(ngx_qq_flv_index_t, node));
-    if (qq_flv_index == NULL) {
-        printf("qq_flv_index not found!\n");
-        return NGX_OK;
-    }
-
-    if (ngx_queue_empty(ngx_qqflv_idle_block_index)) {
-      qq_flv_block_index = ngx_palloc(qmcf->pool, sizeof(ngx_qq_flv_block_index_t));
-    }
-    else {
-      tq = ngx_queue_head(&qmcf->idle_block_index);
-      ngx_queue_remove(tq);
-      qq_flv_block_index = ngx_queue_data(tq, ngx_qq_flv_block_index_t, q);
-    }
-    qq_flv_block_index = ngx_palloc(s->connection->pool, sizeof(ngx_qq_flv_block_index_t));
-
-    qq_flv_block_index->file_offset = index_offset;
-    qq_flv_block_index->timestamp = rctx->timestamp;
-    qq_flv_block_index->qqflvhdr = h->qqflvhdr;
-
-    ngx_queue_insert_tail(&qq_flv_index->index_queue, &qq_flv_block_index->q);
-
-    return NGX_OK;
-}
-
-static ngx_int_t
 ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
                             ngx_rtmp_record_rec_ctx_t *rctx,
                             ngx_rtmp_header_t *h, ngx_chain_t *in,
@@ -1225,6 +1176,10 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
     uint32_t                    timestamp, tag_size;
     off_t                       index_offset;                      
     ngx_rtmp_record_app_conf_t *rracf;
+    ngx_str_t                   channel_name;
+    ngx_rtmp_record_ctx_t      *ctx;
+
+    ctx = ngx_rtmp_get_module_ctx(s, ngx_rtmp_record_module);
 
     rracf = rctx->conf;
 
@@ -1322,7 +1277,10 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
     /* write index */
     switch (h->qqhdrtype) {
     case NGX_RTMP_HEADER_TYPE_QQ_FLV:
-        ngx_rtmp_record_insert_block_index(s, rctx, h, index_offset);
+        channel_name.data = ctx->name;
+        channel_name.len = ngx_strlen(ctx->name);
+        ngx_http_qqflv_insert_block_index(channel_name, rctx->timestamp, h->qqflvhdr, 
+                                      index_offset, NULL);
         if (rracf->index) {            
             if (ngx_rtmp_record_write_qq_flv_index(s, rctx, h, index_offset) == NGX_ERROR) {
                 return NGX_ERROR;

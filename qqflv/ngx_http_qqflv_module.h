@@ -16,4 +16,8 @@ struct ngx_http_qqflv_loc_conf_s {
     ngx_http_qqflv_loc_conf_t      *parent;
 };
 
+ngx_int_t ngx_http_qqflv_insert_block_index(ngx_str_t channel_name, time_t timestamp,
+                                ngx_qq_flv_header_t qqflvhdr, off_t file_offset,
+                                ngx_qq_flv_index_t *qq_flv_index);
+
 #endif

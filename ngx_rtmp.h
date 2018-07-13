@@ -1172,9 +1172,4 @@ extern ngx_module_t                         ngx_rtmp_mpegts_module;
 extern ngx_module_t                         ngx_hls_cmd_module;
 extern ngx_module_t                         ngx_rtmp_auto_pull_module;
 
-/* qq map */
-extern ngx_map_t                            *ngx_qqflv_channnel_map;
-extern ngx_queue_t                          *ngx_qqflv_idle_block_index;
-
-
 #endif /* _NGX_RTMP_H_INCLUDED_ */
