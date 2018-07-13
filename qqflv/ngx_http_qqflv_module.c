@@ -115,8 +115,8 @@ ngx_http_qqflv_create_loc_conf(ngx_conf_t *cf)
 static char *
 ngx_http_qqflv_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
-    ngx_http_qqflv_loc_conf_t *prev = parent;
-    ngx_http_qqflv_loc_conf_t *conf = child;
+    //ngx_http_qqflv_loc_conf_t *prev = parent;
+    //ngx_http_qqflv_loc_conf_t *conf = child;
 
     return NGX_CONF_OK;
 }
