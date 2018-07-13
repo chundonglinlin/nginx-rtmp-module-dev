@@ -21,4 +21,7 @@ ngx_int_t ngx_http_qqflv_insert_block_index(ngx_str_t channel_name, time_t times
                                 ngx_qq_flv_header_t qqflvhdr, off_t file_offset,
                                 ngx_qq_flv_index_t *qq_flv_index);
 
+ngx_int_t ngx_http_qqflv_write_index_file(ngx_file_t *index_file, ngx_qq_flv_header_t *qqflvhdr,
+                            off_t index_offset);
+
 #endif

@@ -1262,7 +1262,7 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
         ngx_http_qqflv_insert_block_index(channel_name, rctx->timestamp, h->qqflvhdr, 
                                       index_offset, NULL);
         if (rracf->index) {            
-            if (ngx_rtmp_record_write_qq_flv_index(s, rctx, h, index_offset) == NGX_ERROR) {
+            if (ngx_http_qqflv_write_index_file(&rctx->index_file, &h->qqflvhdr, index_offset) == NGX_ERROR) {
                 return NGX_ERROR;
             }
         }        
