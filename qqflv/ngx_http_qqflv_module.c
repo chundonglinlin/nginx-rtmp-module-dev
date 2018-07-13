@@ -18,7 +18,7 @@ static ngx_int_t ngx_http_qqflv_init_process(ngx_cycle_t *cycle);
 static ngx_command_t ngx_http_qqflv_commands[] = {
 
     { ngx_string("qqflv_zone"),
-      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_CONF_TAKE3,
       ngx_http_qqflv_zone,
       0,
       0,
@@ -90,8 +90,13 @@ ngx_http_qqflv_init_main_conf(ngx_conf_t *cf, void *conf)
 {
     ngx_http_qqflv_main_conf_t *qmcf = conf;
 
-    if (qmcf->path.data[qmcf->path.len - 1] == '/') {
+    if (qmcf->path.len > 0 && qmcf->path.data[qmcf->path.len - 1] == '/') {
 	    qmcf->path.len -= 1;
+	}
+
+	qmcf->pool = ngx_create_pool(100*1024*1024, cf->log);
+	if(qmcf->pool == NULL) {
+		return NGX_CONF_ERROR;
 	}
 
     return NGX_CONF_OK;
@@ -117,20 +122,20 @@ ngx_http_qqflv_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_http_qqflv_loc_conf_t *prev = parent;
     ngx_http_qqflv_loc_conf_t *conf = child;
-    ngx_http_qqflv_loc_conf_t *rlcf;
+    ngx_http_qqflv_loc_conf_t *qlcf;
 
     if (conf->parent == NGX_CONF_UNSET_PTR){
-        rlcf = prev;
+        qlcf = prev;
 
-        if (rlcf->parent == NGX_CONF_UNSET_PTR) {
-            rlcf->parent = NULL;
+        if (qlcf->parent == NGX_CONF_UNSET_PTR) {
+            qlcf->parent = NULL;
         } else {
-            while (rlcf->parent && rlcf->req_zones.nelts == 0) {
-                rlcf = rlcf->parent;
+            while (qlcf->parent && qlcf->req_zones.nelts == 0) {
+                qlcf = qlcf->parent;
             }
         }
 
-        conf->parent = rlcf->req_zones.nelts ? rlcf : NULL;
+        conf->parent = qlcf->req_zones.nelts ? qlcf : NULL;
     }
 
     return NGX_CONF_OK;
@@ -300,26 +305,208 @@ static char *ngx_http_qqflv_zone(ngx_conf_t *cf, ngx_command_t *cmd,
     return NGX_CONF_OK;
 }
 
-static ngx_int_t
-ngx_http_record_read_qqflv_index(ngx_cycle_t *cycle)
+static ngx_map_node_t *
+ngx_http_qqflv_create_channel(ngx_str_t channel_name, uint32_t backdelay, 
+							unsigned buname, ngx_map_t *channel_map, ngx_slab_pool_t *pool)
 {
-	
+    ngx_qq_flv_index_t                       *qq_flv_index;
+    qq_flv_index = ngx_slab_alloc_locked(pool, sizeof(ngx_qq_flv_index_t));
+    qq_flv_index->buname = buname ? 1 : 0;
+    if (qq_flv_index->buname) {
+        qq_flv_index->backdelay = (backdelay == 0) ? 15 : backdelay;
+    }
+    else {
+        qq_flv_index->backdelay = (backdelay == 0) ? 45 : backdelay;
+    }
+    qq_flv_index->channel_name = channel_name;
+    ngx_queue_init(&qq_flv_index->index_queue);
+    qq_flv_index->node.raw_key = (intptr_t) &qq_flv_index->channel_name;
+    ngx_map_insert(channel_map, &qq_flv_index->node, 0);
+    return NGX_OK;
+}
 
+static ngx_int_t
+ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
+{
+	u_char                                   *left, *last, *p;
+    ngx_str_t                                 channel_name, timestamp, flv_path;
+    ngx_qq_flv_index_t                       *qq_flv_index;
+    ngx_qq_flv_block_index_t                 *qq_flv_block_index;
+    ngx_http_qqflv_zone_t                   **pzone;
+    ngx_file_t                                file;
+    u_char                                    buf[NGX_QQ_FLV_INDEX_SIZE];
+    off_t                                     file_size;
+    ngx_map_node_t                           *node;
+    ngx_map_t                                *channel_map;
+    ngx_uint_t                                i;
+    ngx_http_qqflv_main_conf_t               *qmcf;
+    ngx_queue_t                              *tq;
+
+    qmcf = ctx->data;
+
+    p = path->data;
+    left = path->data;
+    last = path->data + path->len;
+    while (p != last) {
+        if (*p == '/') {
+            left = p;
+        }
+        if (*p == '-' && *left == '/') {
+            ngx_cpymem(channel_name.data, left + 1, p - left - 1);
+            channel_name.len = p - left - 1;
+            left = p;
+        }
+        if (*p == '.') {
+            if (*left == '-') {
+                ngx_cpymem(timestamp.data, left + 1, p - left - 1);
+                timestamp.len = p - left - 1;
+            }
+            left = p;
+        }
+    }
+    if (channel_name.len == 0 || timestamp.len == 0) {
+        return NGX_OK;
+    }
+
+    if (ngx_memcmp(left, ".index", last - left) != 0) {
+        return NGX_OK;
+    }
+
+    ngx_cpymem(flv_path.data, path->data, path->len);
+    flv_path.len = path->len - 5;
+
+	pzone = qmcf->zones.elts;
+
+	for (i = 0; i < qmcf->zones.nelts; i++){
+        ngx_shmtx_lock(&pzone[i]->shpool->mutex);
+        channel_map = &pzone[i]->sh->map;
+
+        node = ngx_map_find(channel_map, (intptr_t) &channel_name);
+        if (node == NULL) {
+	        ngx_shmtx_unlock(&pzone[i]->shpool->mutex);
+        	ngx_delete_file(path->data);
+        	ngx_delete_file(flv_path.data);   
+	        return NGX_OK;
+    	}
+
+    	qq_flv_index = (ngx_qq_flv_index_t *)
+            ((char *) node - offsetof(ngx_qq_flv_index_t, node));
+
+        if (qq_flv_index == NULL) {
+        	ngx_shmtx_unlock(&pzone[i]->shpool->mutex);
+        	return NGX_OK;
+    	}
+
+    	if (ngx_cached_time->sec - ngx_atoi(timestamp.data, timestamp.len) > qq_flv_index->backdelay) {
+        	ngx_shmtx_unlock(&pzone[i]->shpool->mutex);
+        	ngx_delete_file(path->data);
+        	ngx_delete_file(flv_path.data);        	
+        	return NGX_OK;
+    	}
+
+    	file.fd = ngx_open_file(path->data, NGX_FILE_RDONLY, NGX_FILE_OPEN,
+                                        NGX_FILE_DEFAULT_ACCESS);
+
+    	file_size = 0;
+
+	#if (NGX_WIN32)
+	    {
+	        LONG  lo, hi;
+
+	        lo = 0;
+	        hi = 0;
+	        lo = SetFilePointer(file.fd, lo, &hi, FILE_END);
+	        file_size = (lo == INVALID_SET_FILE_POINTER ?
+	                     (off_t) -1 : (off_t) hi << 32 | (off_t) lo);
+	    }
+	#else
+	    file_size = lseek(file.fd, 0, SEEK_END);
+	#endif
+
+	    file.offset = 0;
+
+	    while (file.offset < file_size) {
+	        if (file_size - file.offset < NGX_QQ_FLV_INDEX_SIZE) {
+	            break;
+	        }
+	        if (ngx_read_file(&file, buf, NGX_QQ_FLV_INDEX_SIZE, file.offset) != NGX_QQ_FLV_INDEX_SIZE) {
+	            break;
+	        }
+	        if (buf[NGX_QQ_FLV_INDEX_SIZE - 1] == 1) {
+	        	if (ngx_queue_empty(&pzone[i]->sh->idle_block_index)) {
+	        		qq_flv_block_index = ngx_slab_alloc(pzone[i]->shpool, sizeof(ngx_qq_flv_block_index_t));
+	        	}
+	        	else {
+	        		tq = ngx_queue_head(&pzone[i]->sh->idle_block_index);
+	        		ngx_queue_remove(tq);
+	        		qq_flv_block_index = ngx_queue_data(tq, ngx_qq_flv_block_index_t, q);
+	        	}
+
+	        	p = buf;
+	        	#define READ_QQ_FLV_HEADER_FROM_BUFFER(var)                         \
+	        		ngx_cpymem(&var, p, sizeof(var));                               \
+	        		p += sizeof(var);
+	            
+	            READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->qqflvhdr.usize);
+	            READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->qqflvhdr.huheadersize);
+	            READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->qqflvhdr.huversion);
+	            READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->qqflvhdr.uctype);
+	            READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->qqflvhdr.uckeyframe);
+	            READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->qqflvhdr.usec);
+	            READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->qqflvhdr.useq);
+	            READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->qqflvhdr.usegid);
+	            READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->qqflvhdr.ucheck);
+	            READ_QQ_FLV_HEADER_FROM_BUFFER(qq_flv_block_index->file_offset);
+
+	            #undef READ_QQ_FLV_HEADER_FROM_BUFFER	  
+
+	            qq_flv_block_index->timestamp = (time_t)ngx_atoi(timestamp.data, timestamp.len);
+
+	            printf("uszie: %u\n", qq_flv_block_index->qqflvhdr.usize);
+	            printf("huheadersize: %u\n", qq_flv_block_index->qqflvhdr.huheadersize);
+	            printf("huversion: %u\n", qq_flv_block_index->qqflvhdr.huversion);
+	            printf("uctype: %u\n", qq_flv_block_index->qqflvhdr.uctype);
+	            printf("uckeyframe: %u\n", qq_flv_block_index->qqflvhdr.uckeyframe);
+	            printf("usec: %u\n", qq_flv_block_index->qqflvhdr.usec);
+	            printf("useq: %u\n", qq_flv_block_index->qqflvhdr.useq);
+	            printf("usegid: %u\n", qq_flv_block_index->qqflvhdr.usegid);
+	            printf("ucheck: %u\n", qq_flv_block_index->qqflvhdr.ucheck);
+	            printf("file_offset: %u\n", qq_flv_block_index->file_offset);
+	           	printf("")
+
+
+	            ngx_queue_insert_tail(&qq_flv_index->index_queue, &qq_flv_block_index->q);
+	        }else {
+	            break;
+	        }
+	    }
+
+        ngx_shmtx_unlock(&pzone[i]->shpool->mutex);
+    }
+
+    return NGX_OK;    
+}
+
+static ngx_int_t
+ngx_http_qqflv_read_index(ngx_http_qqflv_main_conf_t *qmcf)
+{	
+	printf("%s-%d", qmcf->path.data, qmcf->path.len);
     ngx_tree_ctx_t                           tree;
     tree.init_handler = NULL;
-    tree.file_handler = ngx_http_read_index_file;
-    tree.data = NULL;
+    tree.file_handler = ngx_http_qqflv_read_index_file;
+    tree.data = qmcf;
     tree.alloc = 0;
-
-    ngx_walk_tree(&tree, &racf->path);
+    ngx_walk_tree(&tree, &qmcf->path);
 
 }
 
-
 static ngx_int_t ngx_http_qqflv_init_process(ngx_cycle_t *cycle)
 {
-	if (ngx_worker == 0) {
-		ngx_http_record_read_qqflv_index(cycle);
+	ngx_http_qqflv_main_conf_t         *qmcf;
+	qmcf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_qqflv_module);
+
+	if (ngx_worker == 0 && qmcf->path.len > 0) {
+		ngx_http_qqflv_read_index(qmcf);
 	}
     return NGX_OK;
 }

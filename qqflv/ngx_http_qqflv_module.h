@@ -7,10 +7,11 @@ typedef struct ngx_http_qqflv_loc_conf_s ngx_http_qqflv_loc_conf_t;
 
 typedef struct {
     ngx_map_t                        map;
+    ngx_queue_t                      idle_block_index;
 } ngx_http_qqflv_sh_t;
 
 typedef struct {
-    ngx_http_qqflv_sh_t        *sh;
+    ngx_http_qqflv_sh_t             *sh;
     ngx_slab_pool_t                 *shpool;
     ngx_shm_zone_t                  *shm_zone;
     ngx_http_complex_value_t        key;
@@ -19,6 +20,7 @@ typedef struct {
 typedef struct {
     ngx_array_t                     zones;
     ngx_str_t                       path;
+    ngx_pool_t                     *pool;
 } ngx_http_qqflv_main_conf_t;
 
 struct ngx_http_qqflv_loc_conf_s {
