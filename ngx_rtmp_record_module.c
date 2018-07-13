@@ -455,9 +455,11 @@ ngx_rtmp_record_node_open(ngx_rtmp_session_t *s,
     ngx_err_t                   err;
     ngx_str_t                   path;
     ngx_int_t                   mode, create_mode;
+    ngx_rtmp_record_ctx_t       *ctx;
     u_char                      buf[8], *p;
     off_t                       file_size;
     uint32_t                    tag_size, mlen, timestamp;
+
 
     rracf = rctx->conf;
     tag_size = 0;
@@ -477,7 +479,9 @@ ngx_rtmp_record_node_open(ngx_rtmp_session_t *s,
     ngx_rtmp_record_make_path(s, rctx, &path);
 
     if (rracf->index) {
-        ngx_http_qqflv_open_index_file(&path, &rctx->index_file, s->connection->log, &rracf->id, &rracf->lock_file);
+        ctx = ngx_rtmp_get_module_ctx(s, ngx_rtmp_record_module);
+        ngx_http_qqflv_open_index_file(&path, &rctx->index_file, s->connection->log, 
+            &rracf->id, &rracf->lock_file, ctx->name);
     }
 
     mode = rracf->append ? NGX_FILE_RDWR : NGX_FILE_WRONLY;

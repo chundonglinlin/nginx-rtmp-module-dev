@@ -25,6 +25,7 @@ ngx_int_t ngx_http_qqflv_write_index_file(ngx_file_t *index_file, ngx_qq_flv_hea
                             off_t index_offset);
 
 ngx_int_t ngx_http_qqflv_open_index_file(ngx_str_t *path, ngx_file_t *index_file, 
-                                    ngx_log_t *log, ngx_str_t *id, ngx_flag_t *lock_file);
+                                    ngx_log_t *log, ngx_str_t *id, ngx_flag_t *lock_file, 
+                                    u_char *channel_name);
 
 #endif

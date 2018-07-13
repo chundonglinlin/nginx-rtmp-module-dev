@@ -241,7 +241,7 @@ ngx_http_qqflv_insert_block_index(ngx_str_t channel_name, time_t timestamp,
 
 ngx_int_t
 ngx_http_qqflv_open_index_file(ngx_str_t *path, ngx_file_t *index_file, 
-                                    ngx_log_t *log, ngx_str_t *id, ngx_flag_t *lock_file)
+                        ngx_log_t *log, ngx_str_t *id, ngx_flag_t *lock_file, u_char *channel_name)
 {
     off_t                       file_size;
     ngx_str_t                   index_path;
@@ -263,6 +263,9 @@ ngx_http_qqflv_open_index_file(ngx_str_t *path, ngx_file_t *index_file,
     index_file->fd = ngx_open_file(index_path.data, NGX_FILE_RDWR, NGX_FILE_CREATE_OR_OPEN,
                                         NGX_FILE_DEFAULT_ACCESS);
     ngx_str_set(&index_file->name, "indexed");
+
+
+
     if (index_file->fd == NGX_INVALID_FILE) {
         err = ngx_errno;
         if (err != NGX_ENOENT) {
