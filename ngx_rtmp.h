@@ -129,6 +129,7 @@ typedef struct {
     ngx_map_t                       block_map;
     ngx_queue_t                     index_queue;
     ngx_queue_t                     keyframe_queue;
+    ngx_queue_t                     q;
 } ngx_qq_flv_index_t;
 
 typedef struct {
