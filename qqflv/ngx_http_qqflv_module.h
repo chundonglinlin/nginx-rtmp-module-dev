@@ -13,6 +13,33 @@ typedef struct {
     ngx_queue_t                     idle_block_index;
 } ngx_http_qqflv_main_conf_t;
 
+typedef struct {
+
+    ngx_int_t       type;
+
+    ngx_flag_t      variant_playback;
+
+    ngx_int_t       start_time;
+    ngx_int_t       end_time;
+
+    ngx_str_t       auth;
+    ngx_str_t       contentid;
+    ngx_str_t       session_id;
+    ngx_str_t       channel_name;
+
+
+}ngx_http_qqflv_ctx_t;
+
+typedef ngx_int_t (*ngx_http_qqflv_request_handler_pt)(ngx_http_request_t *r);
+
+typedef struct {
+
+    ngx_int_t                                type;
+    ngx_str_t                                name;
+    ngx_http_qqflv_request_handler_pt        handler;
+
+} ngx_http_qqflv_request_cmd_t;
+
 struct ngx_http_qqflv_loc_conf_s {
     ngx_http_qqflv_loc_conf_t      *parent;
 };
