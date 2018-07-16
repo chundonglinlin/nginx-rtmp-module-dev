@@ -202,7 +202,7 @@ ngx_http_qqflv_find_channel(ngx_str_t *channel_name)
     ngx_qq_flv_index_t                       *qq_flv_index;
     ngx_map_node_t                           *node;
 
-    node = ngx_map_find(&qqflv_main_conf->channel_map, (intptr_t) &channel_name);
+    node = ngx_map_find(&qqflv_main_conf->channel_map, (intptr_t) channel_name);
     if (node == NULL) {
         return NULL;
     }
@@ -647,7 +647,7 @@ ngx_http_qqflv_parse_request(ngx_http_request_t *r)
         if (ngx_strncmp(buname.data, (u_char *)"qt", buname.len) == 0 || 
                     ngx_strncmp(buname.data, (u_char *)"qtlol", buname.len) == 0)
         {
-            ctx->buname = 0;
+            ctx->buname = 1;
         }
     }
 
@@ -727,7 +727,7 @@ ngx_http_qqflv_parse_request(ngx_http_request_t *r)
     }
 
 
-    swtich(ctx->protocol) {
+    switch(ctx->protocol) {
     case 1795:
         ctx->type = NGX_HTTP_QQFLV_BLOCK;
         break;
@@ -761,7 +761,7 @@ ngx_http_qqflv_parse_request(ngx_http_request_t *r)
     printf("protocol:%d\n", ctx->protocol);
     printf("blockid:%d\n", ctx->blockid);
     printf("piecesize:%d\n", ctx->piecesize);
-    printf("channel_name:%s\n", ctx->channel_name);
+    printf("channel_name:%s\n", ctx->channel_name.data);
 
     return NGX_OK;
     //return NGX_ERROR;
@@ -807,7 +807,7 @@ ngx_http_qqflv_handler(ngx_http_request_t *r)
 
     /* set qqflv request type and time arg */
     rc = ngx_http_qqflv_parse_request(r);
-    if(rc == NGX_ERROR) {
+    /*if(rc == NGX_ERROR) {
         return NGX_HTTP_BAD_REQUEST;
     }
 
