@@ -743,13 +743,7 @@ ngx_http_qqflv_access_handler(ngx_http_request_t *r)
     ngx_log_t                            *log;
     ngx_http_qqflv_ctx_t                 *ctx;
 
-    ngx_http_qqflv_loc_conf_t            *qlcf;
-    ngx_http_qqflv_main_conf_t           *qmcf;
-
     log = r->connection->log;
-
-    qmcf = ngx_http_get_module_main_conf(r, ngx_http_qqflv_module);
-    qlcf = ngx_http_get_module_loc_conf(r, ngx_http_qqflv_module);
 
     if (r->uri.data[r->uri.len - 1] == '/') {
         return NGX_DECLINED;
@@ -767,6 +761,7 @@ ngx_http_qqflv_access_handler(ngx_http_request_t *r)
     if(rc == NGX_ERROR) {
         return NGX_HTTP_BAD_REQUEST;
     }
+    return rc;
 }
 
 static ngx_int_t
@@ -794,15 +789,12 @@ ngx_http_qqflv_content_handler(ngx_http_request_t *r)
     //    return NGX_HTTP_NOT_ALLOWED;
     //}
 
-    if (r->uri.data[r->uri.len - 1] == '/') {
-        return NGX_DECLINED;
-    }
+    
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_qqflv_module);
 
     if(ctx == NULL) {
-        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_qqflv_ctx_t));
-    
+        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_qqflv_ctx_t));    
         ngx_http_set_ctx(r, ctx, ngx_http_qqflv_module);
     }
 
@@ -816,8 +808,8 @@ ngx_http_qqflv_content_handler(ngx_http_request_t *r)
     }
     
     if(cmd == NULL) {
-        ngx_log_error(NGX_LOG_ERR, log, 0, "unknown type cntv request");
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        ngx_log_error(NGX_LOG_ERR, log, 0, "unknown type qqflv request");
+        return NGX_HTTP_NOT_FOUND;
     }
     
     rc = cmd->handler(r);
