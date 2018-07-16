@@ -3,6 +3,14 @@
 #include "ngx_map.h"
 #include "ngx_rtmp.h"
 
+#define NGX_HTTP_DEFAULT                   0
+#define NGX_HTTP_QQFLV_NORMAL              1
+#define NGX_HTTP_QQFLV_PLAYBACK            2
+#define NGX_HTTP_QQFLV_SOURCE              3
+#define NGX_HTTP_QQFLV_BLOCK               4
+#define NGX_HTTP_QQFLV_PIECE               5
+#define NGX_HTTP_QQFLV_IDLE                6
+
 typedef struct ngx_http_qqflv_loc_conf_s ngx_http_qqflv_loc_conf_t;
 
 typedef struct {
@@ -14,20 +22,15 @@ typedef struct {
 } ngx_http_qqflv_main_conf_t;
 
 typedef struct {
-
-    ngx_int_t       type;
-
-    ngx_flag_t      variant_playback;
-
-    ngx_int_t       start_time;
-    ngx_int_t       end_time;
-
-    ngx_str_t       auth;
-    ngx_str_t       contentid;
-    ngx_str_t       session_id;
-    ngx_str_t       channel_name;
-
-
+    unsigned                        buname:1;
+    unsigned                        xHttpTrunk:1;
+    unsigned                        type:3;
+    ngx_int_t                       backsec;  
+    ngx_int_t                       protocol;
+    ngx_int_t                       blockid;
+    ngx_int_t                       piecesize;
+    ngx_str_t                       channel_name;
+    ngx_qq_flv_index_t             *qq_flv_index;
 }ngx_http_qqflv_ctx_t;
 
 typedef ngx_int_t (*ngx_http_qqflv_request_handler_pt)(ngx_http_request_t *r);
