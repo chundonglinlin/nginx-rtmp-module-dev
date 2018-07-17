@@ -104,7 +104,7 @@ ngx_http_qqflv_make_header(u_char *p, const ngx_qq_flv_header_t *qqflvhdr, const
         p = ngx_cpymem(p, &qqflvhdr->ucheck, 4);
     } else {
         p = ngx_cpymem(p, usize, 4);
-        p = ngx_cpymem(p, (u_char *) "\0", 2);
+        p = ngx_cpymem(p, (u_char *) "\x1a", 2);
         p = ngx_cpymem(p, (u_char *) "\0", 2);
         p = ngx_cpymem(p, (u_char *) "\0", 1);
         p = ngx_cpymem(p, (u_char *) "\0", 1);
