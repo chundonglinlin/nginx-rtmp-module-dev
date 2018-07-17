@@ -228,7 +228,6 @@ ngx_http_qqflv_insert_block_index(ngx_str_t channel_name, time_t timestamp,
     ngx_qq_flv_block_index_t                 *qq_flv_block_index;
     ngx_queue_t                              *tq;
     ngx_map_node_t                           *node;
-    ngx_str_t                                 block_key;
 
     if (qq_flv_index == NULL) {
         qq_flv_index = ngx_http_qqflv_find_channel(&channel_name);
@@ -265,9 +264,9 @@ ngx_http_qqflv_insert_block_index(ngx_str_t channel_name, time_t timestamp,
     printf("timestamp: %u\n", qq_flv_block_index->timestamp);*/
 
     ngx_queue_insert_tail(&qq_flv_index->index_queue, &qq_flv_block_index->q);
-    block_key.data = &qq_flv_block_index->qqflvhdr.useq;
-    block_key.len = sizeof(uint32_t);
-    qq_flv_block_index->node.raw_key = (intptr_t) &block_key;
+    qq_flv_block_index->block_key.data = &qq_flv_block_index->qqflvhdr.useq;
+    qq_flv_block_index->block_key.len = sizeof(uint32_t);
+    qq_flv_block_index->node.raw_key = (intptr_t) &qq_flv_block_index->block_key;
     ngx_map_insert(&qq_flv_index->block_map, &qq_flv_block_index->node, 0);
     if (qq_flv_block_index->qqflvhdr.uckeyframe == 2) {
         ngx_queue_insert_tail(&qq_flv_index->keyframe_queue, &qq_flv_block_index->kq);
@@ -651,7 +650,7 @@ ngx_http_qqflv_read_source_file(u_char *p, const ngx_str_t *channel_name, const 
     tp = ngx_cpymem(tp, (u_char *) "/usr/local/nginx/flv/", sizeof("/usr/local/nginx/flv/") - 1);
     tp = (u_char *)ngx_escape_uri(tp, channel_name->data, channel_name->len, NGX_ESCAPE_URI_COMPONENT);
     tp = ngx_cpymem(tp, buf, ngx_sprintf(buf, "-%T", *timestamp) - buf);
-    tp = ngx_cpymem(p, (u_char *) ".flv", sizeof(".flv") - 1);
+    tp = ngx_cpymem(tp, (u_char *) ".flv", sizeof(".flv") - 1);
     *tp = 0;
 
     file.fd = ngx_open_file(pbuf, NGX_FILE_RDONLY, NGX_FILE_OPEN, 0);
