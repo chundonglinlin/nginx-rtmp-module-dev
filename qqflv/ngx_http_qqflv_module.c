@@ -87,6 +87,30 @@ ngx_module_t  ngx_http_qqflv_module = {
 	NGX_MODULE_V1_PADDING
 };
 
+#define MAKE_QQFLV_HEADER(p, hdr, size, seq, segid)                    \
+    if (hdr) {                                                         \
+        p = ngx_cpymem(p, size, 4);                                    \
+        p = ngx_cpymem(p, &hdr->huheadersize, 2);                      \
+        p = ngx_cpymem(p, &hdr->huversion, 2);                         \
+        p = ngx_cpymem(p, &hdr->uctype, 1);                            \
+        p = ngx_cpymem(p, &hdr->uckeyframe, 1);                        \
+        p = ngx_cpymem(p, &hdr->usec, 4);                              \
+        p = ngx_cpymem(p, seq, 4);                                     \
+        p = ngx_cpymem(p, segid, 4);                                   \
+        p = ngx_cpymem(p, &hdr->ucheck, 4);                            \
+    } else {                                                           \
+        p = ngx_cpymem(p, size, 4);                                    \
+        p = ngx_cpymem(p, (u_char *) 0, 2);                            \
+        p = ngx_cpymem(p, (u_char *) 0, 2);                            \
+        p = ngx_cpymem(p, (u_char *) 0, 1);                            \
+        p = ngx_cpymem(p, (u_char *) 0, 1);                            \
+        p = ngx_cpymem(p, (u_char *) 0, 4);                            \
+        p = ngx_cpymem(p, seq, 4);                                     \
+        p = ngx_cpymem(p, segid, 4);                                   \
+        p = ngx_cpymem(p, (u_char *) 0, 4);                            \
+    }
+
+
 static void *
 ngx_http_qqflv_create_main_conf(ngx_conf_t *cf)
 {
@@ -639,12 +663,9 @@ ngx_http_qqflv_read_source_file(u_char *p, const ngx_str_t *channel_name, const 
 static ngx_int_t
 ngx_http_qqflv_block_handler(ngx_http_request_t *r)
 {
-    u_char                      *p;
-    uint32_t                     max = 0, st, et, tt, seq = 0, next_slice = 0;
-    ngx_int_t                    rc;
-    ngx_buf_t                   *b;
-    ngx_log_t                   *log;
-    ngx_keyval_t                *h;
+    u_char                                   *p;
+    ngx_log_t                                *log;
+    ngx_keyval_t                             *h;
     ngx_uint_t                                len;
     ngx_chain_t                              *cl, *l, **ll;
     ngx_http_qqflv_ctx_t                     *ctx;
@@ -652,17 +673,18 @@ ngx_http_qqflv_block_handler(ngx_http_request_t *r)
     ngx_qq_flv_block_index_t                 *qq_flv_block_index;
     ngx_str_t                                 block_key;
     ngx_map_node_t                           *node;
-    ngx_http_qqflv_main_conf_t               *qmcf;
     ngx_str_t                                *range, block_key;
+    ngx_qq_flv_header_t                      *qqflvhdr;
     
     b = NULL;
     log = r->connection->log;
-    ctx = ngx_http_get_module_ctx(r, ngx_http_qqflv_module);
+    
     qq_flv_block_index = NULL;
-    qmcf = ngx_http_get_module_main_conf(r, ngx_http_qqflv_module);
     block_key.len = sizeof(uint32_t);
     cl = NULL;
     ll = &cl;
+
+    ctx = ngx_http_get_module_ctx(r, ngx_http_qqflv_module);
 
     if (r->headers_in.range) {
         range = &(r->headers_in.range)->value;
@@ -678,34 +700,18 @@ ngx_http_qqflv_block_handler(ngx_http_request_t *r)
                         ((char *) node - offsetof(ngx_qq_flv_block_index_t, node));
                 }
                 if (qq_flv_block_index) {
-                    *ll = ngx_get_chainbuf(NGX_QQ_FLV_HEADER_SIZE + qq_flv_block_index->qqflvhdr.usize, 1);
+                    qqflvhdr = &qq_flv_block_index->qqflvhdr;
+                    *ll = ngx_get_chainbuf(NGX_QQ_FLV_HEADER_SIZE + qqflvhdr->usize, 1);
                     p = (*ll)->buf->pos;
-                    p = ngx_cpymem(p, &qqflvhdr->usize, sizeof(qqflvhdr->usize));
-                    p = ngx_cpymem(p, &qqflvhdr->huheadersize, sizeof(qqflvhdr->huheadersize));
-                    p = ngx_cpymem(p, &qqflvhdr->huversion, sizeof(qqflvhdr->huversion));
-                    p = ngx_cpymem(p, &qqflvhdr->uctype, sizeof(qqflvhdr->uctype));
-                    p = ngx_cpymem(p, &qqflvhdr->uckeyframe, sizeof(qqflvhdr->uckeyframe));
-                    p = ngx_cpymem(p, &qqflvhdr->usec, sizeof(qqflvhdr->usec));
-                    p = ngx_cpymem(p, &qqflvhdr->useq, sizeof(qqflvhdr->useq));
-                    p = ngx_cpymem(p, (u_char *) INT_MAX, sizeof(qqflvhdr->usegid));
-                    p = ngx_cpymem(p, &qqflvhdr->ucheck, sizeof(qqflvhdr->ucheck));
+                    MAKE_QQFLV_HEADER(p, qqflvhdr, &qqflvhdr->usize, &qqflvhdr->useq, (u_char *) INT_MAX);
                     p = ngx_http_qqflv_read_source_file(p, &ctx->qq_flv_index.channel_name, 
-                        &qq_flv_block_index->timestamp,  &qq_flv_block_index->file_offset, &qq_flv_block_index->qqflvhdr.usize);
-
+                        &qq_flv_block_index->timestamp,  &qq_flv_block_index->file_offset, &qqflvhdr->usize);
                     (*ll)->buf->last = p;
                     qq_flv_block_index = NULL;                    
                 } else {
                     *ll = ngx_get_chainbuf(NGX_QQ_FLV_HEADER_SIZE, 1);
                     p = (*ll)->buf->pos;
-                    p = ngx_cpymem(p, (u_char *) 0, sizeof(qqflvhdr->usize));
-                    p = ngx_cpymem(p, &qqflvhdr->huheadersize, sizeof(qqflvhdr->huheadersize));
-                    p = ngx_cpymem(p, (u_char *) 0, sizeof(qqflvhdr->huversion));
-                    p = ngx_cpymem(p, (u_char *) 0, sizeof(qqflvhdr->uctype));
-                    p = ngx_cpymem(p, (u_char *) 0, sizeof(qqflvhdr->uckeyframe));
-                    p = ngx_cpymem(p, (u_char *) 0, sizeof(qqflvhdr->usec));
-                    p = ngx_cpymem(p, &i, sizeof(qqflvhdr->useq));
-                    p = ngx_cpymem(p, (u_char *) INT_MAX, sizeof(qqflvhdr->usegid));
-                    p = ngx_cpymem(p, (u_char *) 0, sizeof(qqflvhdr->ucheck));
+                    MAKE_QQFLV_HEADER(p, NULL, 0, &i, (u_char *) INT_MAX);         
                     (*ll)->buf->last = p;
                 }                   
                 ll = &(*ll)->next;
