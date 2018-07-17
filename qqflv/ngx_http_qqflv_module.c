@@ -694,10 +694,10 @@ ngx_http_qqflv_block_handler(ngx_http_request_t *r)
         range = &(r->headers_in.range)->value;
         for (tp = range->data; tp < range->data + range->len;)
         {
-            start = end = 0;
+            start = end = INT_MAX;
             tp = ngx_http_qqflv_parse_range(tp, range->data + range->len, &start, &end);
             printf("range: %u-%u\n", start, end);
-            if (start == end && start == 0)
+            if (start == end && start == INT_MAX)
             {
                 break;
             }
