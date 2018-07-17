@@ -233,8 +233,9 @@ ngx_http_qqflv_insert_block_index(ngx_str_t channel_name, time_t timestamp,
     if (qq_flv_index == NULL) {
         qq_flv_index = ngx_http_qqflv_find_channel(&channel_name);
         if (qq_flv_index == NULL) {
-            printf("node not found!\n");
-            return NGX_OK;
+            qq_flv_index = ngx_http_qqflv_create_channel(&channel_name, 0, 0);
+            //printf("node not found!\n");
+            //return NGX_OK;
         }
     }
 
@@ -442,10 +443,10 @@ ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
         //return NGX_OK;
 	}
 
-	if (ngx_cached_time->sec - ngx_atoi(timestamp.data, timestamp.len) > qq_flv_index->backdelay) {
+	/*if (ngx_cached_time->sec - ngx_atoi(timestamp.data, timestamp.len) > qq_flv_index->backdelay) {
     	ngx_delete_file(path->data);   	
     	return NGX_OK;
-	}
+	}*/
 
     if (ngx_memcmp(left, ".index", last - left) != 0) {
         return NGX_OK;
@@ -661,6 +662,7 @@ ngx_http_qqflv_read_source_file(u_char *p, const ngx_str_t *channel_name, const 
     {
         return p;
     }
+    ngx_close_file(file.fd);
     return p + *size;
 }
 
