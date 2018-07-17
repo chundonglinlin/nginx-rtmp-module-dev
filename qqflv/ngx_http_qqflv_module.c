@@ -704,6 +704,7 @@ ngx_http_qqflv_block_handler(ngx_http_request_t *r)
             for (i = start; i <= end; i++)
             {
                 block_key.data = &i;
+                node = qq_flv_block_index = NULL;
                 node = ngx_map_find(&ctx->qq_flv_index->block_map, (intptr_t) &block_key);
                 if (node) {
                     qq_flv_block_index = (ngx_qq_flv_block_index_t *)
@@ -716,8 +717,7 @@ ngx_http_qqflv_block_handler(ngx_http_request_t *r)
                     p = ngx_http_qqflv_make_header(p, qqflvhdr, &qqflvhdr->usize, &qqflvhdr->useq, INT_MAX);
                     p = ngx_http_qqflv_read_source_file(p, &ctx->qq_flv_index->channel_name, 
                         &qq_flv_block_index->timestamp,  &qq_flv_block_index->file_offset, &qqflvhdr->usize);
-                    (*ll)->buf->last = p;
-                    qq_flv_block_index = NULL;                    
+                    (*ll)->buf->last = p;                
                 } else {
                     *ll = ngx_get_chainbuf(NGX_QQ_FLV_HEADER_SIZE, 1);
                     if (*ll == NULL) {
