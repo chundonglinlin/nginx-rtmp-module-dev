@@ -56,7 +56,7 @@ static ngx_http_qqflv_request_cmd_t ngx_http_qqflv_request_cmds[] = {
     {
         NGX_HTTP_QQFLV_PIECE,
         ngx_string("qqflv piece"),
-        ngx_http_qqflv_playback_handler,
+        ngx_http_qqflv_piece_handler,
     },
 };
 
@@ -688,6 +688,7 @@ ngx_http_qqflv_piece_handler(ngx_http_request_t *r)
     log = r->connection->log;
     node = qq_flv_block_index = NULL;
     block_key.len = sizeof(uint32_t);
+    strBlock.len = 0;
     cl = NULL;
     ll = &cl;
 
@@ -702,7 +703,7 @@ ngx_http_qqflv_piece_handler(ngx_http_request_t *r)
     }
     if (qq_flv_block_index) {
         qqflvhdr = &qq_flv_block_index->qqflvhdr;
-        strBlock.data = ngx_pcalloc(r->connection->pool, qq_flv_block_index->usize);
+        strBlock.data = ngx_pcalloc(r->connection->pool, qqflvhdr->usize);
         strBlock.len = ngx_http_qqflv_read_source_file(strBlock.data, &ctx->qq_flv_index->channel_name, 
             &qq_flv_block_index->timestamp, &qq_flv_block_index->file_offset, &qqflvhdr->usize) - strBlock.data;
     }
@@ -720,9 +721,9 @@ ngx_http_qqflv_piece_handler(ngx_http_request_t *r)
                 }
                 for (i = start; i <= end; i++)
                 {
-                    ReadPos = start * ctx->piecesize;
+                    ReadPos = i * ctx->piecesize;
                     ReadSize = strBlock.len - ReadPos >= ctx->piecesize ? ctx->piecesize : (strBlock.len - ReadPos);
-                    if (ReadSize < 0) ReadSize = 0;
+                    if (ReadPos > strBlock.len) ReadSize = 0;
                     *ll = ngx_get_chainbuf(NGX_QQ_FLV_HEADER_SIZE + ReadSize, 1);
                     if (*ll == NULL) {
                         break;
@@ -738,8 +739,10 @@ ngx_http_qqflv_piece_handler(ngx_http_request_t *r)
         }
     } else {
         *ll = ngx_get_chainbuf(0, 1);
+        if (*ll == NULL) {
+        }
         (*ll)->buf->last = (*ll)->buf->pos;
-        ll = &(*ll)->next;        
+        ll = &(*ll)->next;
     }
 
     r->headers_out.status = NGX_HTTP_OK;
@@ -761,10 +764,11 @@ ngx_http_qqflv_piece_handler(ngx_http_request_t *r)
     if( rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
         return rc;
     }
-    //b->memory = 1;
+
+    cl->buf->memory = 1;
     
-    cl->buf->last_in_chain = 1;
-    cl->buf->last_buf = 1;
+    //cl->buf->last_in_chain = 1;
+    //cl->buf->last_buf = 1;
 
     return ngx_http_output_filter(r, cl);
 }
