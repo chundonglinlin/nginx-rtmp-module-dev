@@ -674,7 +674,7 @@ ngx_http_qqflv_piece_handler(ngx_http_request_t *r)
     ngx_log_t                                *log;
     ngx_keyval_t                             *h;
     ngx_uint_t                                len;
-    ngx_chain_t                              *cl, *l, **ll;
+    ngx_chain_t                              *cl, *l, **ll, out;
     ngx_http_qqflv_ctx_t                     *ctx;
     uint32_t                                  start, end, i, ReadSize;
     off_t                                     ReadPos;
@@ -683,6 +683,7 @@ ngx_http_qqflv_piece_handler(ngx_http_request_t *r)
     ngx_str_t                                *range, block_key, strBlock;
     ngx_qq_flv_header_t                      *qqflvhdr;
     ngx_int_t                                 rc;
+    ngx_buf_t          *b;
 
     
     log = r->connection->log;
@@ -738,11 +739,7 @@ ngx_http_qqflv_piece_handler(ngx_http_request_t *r)
             }
         }
     } else {
-        *ll = ngx_get_chainbuf(0, 1);
-        if (*ll == NULL) {
-        }
-        (*ll)->buf->last = (*ll)->buf->pos;
-        ll = &(*ll)->next;
+        r->header_only = 1;
     }
 
     r->headers_out.status = NGX_HTTP_OK;
@@ -769,7 +766,6 @@ ngx_http_qqflv_piece_handler(ngx_http_request_t *r)
     
     //cl->buf->last_in_chain = 1;
     //cl->buf->last_buf = 1;
-
     return ngx_http_output_filter(r, cl);
 }
 
