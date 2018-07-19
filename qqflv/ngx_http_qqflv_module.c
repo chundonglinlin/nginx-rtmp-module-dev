@@ -659,38 +659,67 @@ ngx_http_qqflv_playback_handler(ngx_http_request_t *r)
 static void
 ngx_http_qqflv_playback_write_handler(ngx_http_request_t *r)
 {
-    u_char                      *last;
-    uint32_t                     current_time;
-    ngx_int_t                    rc;
-    ngx_buf_t                   *b;
-    ngx_log_t                   *log;
-    ngx_keyval_t                *h;
-    ngx_uint_t                   n = 0, i, len;
-    ngx_chain_t                  out;
-    ngx_http_qqflv_ctx_t        *ctx;
-    //ngx_http_qqflv_session_t    *s;
-    ngx_http_qqflv_main_conf_t  *qmcf;
-    //ngx_http_cntv_slice_index_data_t    *d;
-    ngx_queue_t                 *tq;
-    //ngx_qq_flv_block_index_t    *qq_flv_block_index;
-    ngx_chain_t                 *cl;
-    ngx_file_t                   file;
-    
-    b = NULL;
-    log = r->connection->log;
+    ngx_http_qqflv_ctx_t                     *ctx;
+    ngx_log_t                                *log;
+    ngx_event_t                              *wev;
+
     ctx = ngx_http_get_module_ctx(r, ngx_http_qqflv_module);
-    qmcf = ngx_http_get_module_main_conf(r, ngx_http_qqflv_module);
+    if (ctx == NULL) {
+        return;
+    }
+    log = r->connection->log;
+    wev = r->connection->write;
 
     ctx->timestamp = ctx->qq_flv_block_index->timestamp;
 
-    ngx_http_qqflv_open_source_file(&file, &ctx->qq_flv_index->channel_name, &ctx->timestamp);
-    printf("useq: %u\n", ctx->qq_flv_block_index->qqflvhdr.useq);
-    ctx->out_chain = ngx_http_qqflv_prepare_out_chain(&file, ctx->qq_flv_block_index);
+    if (wev->timedout) {
+        ngx_log_error(NGX_LOG_INFO, r->connection->log, NGX_ETIMEDOUT,
+                "http qqflv playback, client timed out");
+        r->connection->timedout = 1;
+        if (r->header_sent) {
+            ngx_http_finalize_request(r, NGX_HTTP_CLIENT_CLOSED_REQUEST);
+            ngx_http_run_posted_requests(r->connection);
+        } else {
+            r->error_page = 1;
+            ngx_http_finalize_request(r, NGX_HTTP_NOT_FOUND);
+        }
+        return;
+    }
+
+    if (wev->timer_set) {
+        ngx_del_timer(wev);
+    }
+
+    if (ctx->file.fd == NGX_INVALID_FILE) {
+        ngx_http_qqflv_open_source_file(&ctx->file, &ctx->qq_flv_index->channel_name, &ctx->timestamp);
+    }
+
+    if (ctx->out_chain == NULL) {
+        ctx->out_chain = ngx_http_qqflv_prepare_out_chain(&ctx->file, ctx->qq_flv_block_index);
+    } 
+    
     while (ctx->out_chain) {
         if (r->connection->buffered) {
             rc = ngx_http_output_filter(r, NULL);
         } else {
             rc = ngx_http_output_filter(r, ctx->out_chain);
+        }
+
+        if (rc == NGX_AGAIN) {
+            ngx_add_timer(wev, 1);
+            if (ngx_handle_write_event(wev, 0) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
+                        "http qqflv playback, handle write event failed");
+                ngx_http_finalize_request(r, NGX_ERROR);
+            }
+            return;
+        }
+
+        if (rc == NGX_ERROR) {
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
+                    "http qqflv playback, send error");
+            ngx_http_finalize_request(r, NGX_ERROR);
+            return;
         }
 
         cl = ctx->out_chain;
@@ -699,20 +728,24 @@ ngx_http_qqflv_playback_write_handler(ngx_http_request_t *r)
             ngx_put_chainbuf(cl);
             cl = ctx->out_chain;
         }
+
         tq = ngx_queue_next(&ctx->qq_flv_block_index->q);
         if (tq == ngx_queue_sentinel(&ctx->qq_flv_index->index_queue)) {
-            ngx_add_timer(r->connection->write, 1);
-            ngx_handle_write_event(r->connection->write, 0);
-            ngx_close_file(file.fd);
+            ngx_add_timer(wev, 1);
+            if (ngx_handle_write_event(wev, 0) != NGX_OK) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, ngx_errno,
+                        "http qqflv playback, handle write event failed");
+                ngx_http_finalize_request(r, NGX_ERROR);
+            }
             return;
         }
         ctx->qq_flv_block_index = ngx_queue_data(tq, ngx_qq_flv_block_index_t, q);
         if (ctx->qq_flv_block_index->timestamp != ctx->timestamp) {
             ctx->timestamp = ctx->qq_flv_block_index->timestamp;
-            ngx_close_file(file.fd);
-            ngx_http_qqflv_open_source_file(&file, &ctx->qq_flv_index->channel_name, &ctx->timestamp);
+            ngx_close_file(ctx->file.fd);
+            ngx_http_qqflv_open_source_file(&ctx->file, &ctx->qq_flv_index->channel_name, &ctx->timestamp);
         }
-        ctx->out_chain = ngx_http_qqflv_prepare_out_chain(&file, ctx->qq_flv_block_index);
+        ctx->out_chain = ngx_http_qqflv_prepare_out_chain(&ctx->file, ctx->qq_flv_block_index);
     }
     ngx_close_file(file.fd);
 }

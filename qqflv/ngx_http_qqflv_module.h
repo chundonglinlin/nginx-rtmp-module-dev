@@ -30,6 +30,7 @@ typedef struct {
     ngx_int_t                       piecesize;
     ngx_str_t                       channel_name;
     time_t                          timestamp;
+    ngx_file_t                      file;
     ngx_chain_t                    *out_chain;
     ngx_qq_flv_index_t             *qq_flv_index;
     ngx_qq_flv_block_index_t       *qq_flv_block_index;
