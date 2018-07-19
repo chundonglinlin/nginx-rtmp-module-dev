@@ -29,6 +29,8 @@ typedef struct {
     ngx_int_t                       blockid;
     ngx_int_t                       piecesize;
     ngx_str_t                       channel_name;
+    time_t                          timestamp;
+    ngx_chain_t                    *out_chain;
     ngx_qq_flv_index_t             *qq_flv_index;
 }ngx_http_qqflv_ctx_t;
 
@@ -48,7 +50,7 @@ struct ngx_http_qqflv_loc_conf_s {
 
 ngx_int_t ngx_http_qqflv_insert_block_index(ngx_str_t channel_name, time_t timestamp,
                                 ngx_qq_flv_header_t qqflvhdr, off_t file_offset,
-                                ngx_qq_flv_index_t *qq_flv_index);
+                                ngx_qq_flv_index_t *qq_flv_index, unsigned curflag);
 
 ngx_int_t ngx_http_qqflv_write_index_file(ngx_file_t *index_file, ngx_qq_flv_header_t *qqflvhdr,
                             off_t index_offset);

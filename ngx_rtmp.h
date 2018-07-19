@@ -131,6 +131,7 @@ typedef struct {
     ngx_queue_t                     index_queue;
     ngx_queue_t                     keyframe_queue;
     ngx_queue_t                     q;
+    uint32_t                        current_time;
 } ngx_qq_flv_index_t;
 
 typedef struct {

@@ -1177,7 +1177,7 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
         channel_name.data = ctx->name;
         channel_name.len = ngx_strlen(ctx->name);
         ngx_http_qqflv_insert_block_index(channel_name, rctx->timestamp, h->qqflvhdr, 
-                                      index_offset, NULL);
+                                      index_offset, NULL, 1);
         if (rracf->index) {            
             if (ngx_http_qqflv_write_index_file(&rctx->index_file, &h->qqflvhdr, index_offset) == NGX_ERROR) {
                 return NGX_ERROR;
