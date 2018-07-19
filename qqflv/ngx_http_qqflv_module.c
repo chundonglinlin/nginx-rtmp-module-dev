@@ -186,6 +186,616 @@ static void ngx_qq_backdelay_timeout_handler(ngx_event_t *event)
 
 }
 
+ngx_int_t
+ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
+{
+    u_char                      ch, *p, *pc;
+    ngx_rtmp_stream_t          *st;
+    ngx_rtmp_header_t          *h;
+    ngx_qq_flv_header_t        *qqflvhdr;
+    ngx_chain_t               **ll;
+    size_t                      len;
+    ngx_rtmp_core_srv_conf_t   *cscf;
+    ngx_int_t                   rc = NGX_AGAIN;
+    enum {
+        qq_flv_usize0 = 0,
+        qq_flv_usize1,
+        qq_flv_usize2,
+        qq_flv_usize3,
+        qq_flv_huheadersize0,
+        qq_flv_huheadersize1,
+        qq_flv_huversion0,
+        qq_flv_huversion1,
+        qq_flv_uctype,
+        qq_flv_uckeyframe,
+        qq_flv_usec0,
+        qq_flv_usec1,
+        qq_flv_usec2,
+        qq_flv_usec3,
+        qq_flv_useq0,
+        qq_flv_useq1,
+        qq_flv_useq2,
+        qq_flv_useq3,
+        qq_flv_usegid0,
+        qq_flv_usegid1,
+        qq_flv_usegid2,
+        qq_flv_usegid3,
+        qq_flv_ucheck0,
+        qq_flv_ucheck1,
+        qq_flv_ucheck2,
+        qq_flv_ucheck3,
+
+        flv_header_F,
+        flv_header_FL,
+        flv_header_FLV,
+        flv_header_Version,
+        flv_header_Flags,
+        flv_header_DataOffset0,
+        flv_header_DataOffset1,
+        flv_header_DataOffset2,
+        flv_header_DataOffset3,
+        flv_tagsize0,
+        flv_tagsize1,
+        flv_tagsize2,
+        flv_tagsize3,
+        flv_tagtype,
+        flv_datasize0,
+        flv_datasize1,
+        flv_datasize2,
+        flv_timestamp0,
+        flv_timestamp1,
+        flv_timestamp2,
+        flv_timestamp_extended,
+        flv_streamid0,
+        flv_streamid1,
+        flv_streamid2,
+        flv_data
+    } state;
+
+    state = s->qq_flv_state;
+    cscf = ngx_rtmp_get_module_srv_conf(s, ngx_rtmp_core_module);
+
+    for (p = b->pos; p < b->last; ++p) {
+        ch = *p;
+
+        switch (state) {
+
+        case qq_flv_usize0:
+            s->qqhdrtype = NGX_RTMP_HEADER_TYPE_QQ_FLV;
+            qqflvhdr = &s->qqflvhdr;            
+            qqflvhdr->usize = 0;
+            pc = (u_char *) &qqflvhdr->usize;
+            pc[0] = ch;
+            state = qq_flv_usize1;
+            break;
+
+        case qq_flv_usize1:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usize;
+            pc[1] = ch;
+            state = qq_flv_usize2;
+            break;
+
+        case qq_flv_usize2:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usize;
+            pc[2] = ch;
+            state = qq_flv_usize3;
+            break;
+
+        case qq_flv_usize3:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usize;
+            pc[3] = ch;
+            s->qq_flv_len = qqflvhdr->usize;
+            state = qq_flv_huheadersize0;
+            break;
+
+        case qq_flv_huheadersize0:
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->huheadersize = 0;
+            pc = (u_char *) &qqflvhdr->huheadersize;
+            pc[0] = ch;
+            state = qq_flv_huheadersize1;
+            break;
+
+        case qq_flv_huheadersize1:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->huheadersize;
+            pc[1] = ch;
+            if (qqflvhdr->huheadersize != NGX_QQ_FLV_HEADER_SIZE) {
+                rc = NGX_ERROR;
+                goto done;
+            }
+            state = qq_flv_huversion0;
+            break;
+
+        case qq_flv_huversion0:
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->huversion = 0;
+            pc = (u_char *) &qqflvhdr->huversion;
+            pc[0] = ch;
+            state = qq_flv_huversion1;
+            break;
+
+        case qq_flv_huversion1:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->huversion;
+            pc[1] = ch;
+            state = qq_flv_uctype;
+            break;
+
+        case qq_flv_uctype:
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->uctype = ch;
+            state = qq_flv_uckeyframe;
+            break;
+
+        case qq_flv_uckeyframe:
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->uckeyframe = ch;
+            state = qq_flv_usec0;
+            break;
+
+        case qq_flv_usec0:
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->usec = 0;
+            pc = (u_char *) &qqflvhdr->usec;
+            pc[0] = ch;
+            state = qq_flv_usec1;
+            break;
+
+        case qq_flv_usec1:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usec;
+            pc[1] = ch;
+            state = qq_flv_usec2;
+            break;
+
+        case qq_flv_usec2:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usec;
+            pc[2] = ch;
+            state = qq_flv_usec3;
+            break;
+
+        case qq_flv_usec3:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usec;
+            pc[3] = ch;
+            state = qq_flv_useq0;
+            break;
+
+        case qq_flv_useq0:
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->useq = 0;
+            pc = (u_char *) &qqflvhdr->useq;
+            pc[0] = ch;
+            state = qq_flv_useq1;
+            break;
+
+        case qq_flv_useq1:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->useq;
+            pc[1] = ch;
+            state = qq_flv_useq2;
+            break;
+
+        case qq_flv_useq2:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->useq;
+            pc[2] = ch;
+            state = qq_flv_useq3;
+            break;
+
+        case qq_flv_useq3:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->useq;
+            pc[3] = ch;
+            state = qq_flv_usegid0;
+            break;
+
+        case qq_flv_usegid0:
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->usegid = 0;
+            pc = (u_char *) &qqflvhdr->usegid;
+            pc[0] = ch;
+            state = qq_flv_usegid1;
+            break;
+
+        case qq_flv_usegid1:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usegid;
+            pc[1] = ch;
+            state = qq_flv_usegid2;
+            break;
+
+        case qq_flv_usegid2:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usegid;
+            pc[2] = ch;
+            state = qq_flv_usegid3;
+            break;
+
+        case qq_flv_usegid3:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->usegid;
+            pc[3] = ch;
+            state = qq_flv_ucheck0;
+            break;
+
+        case qq_flv_ucheck0:
+            qqflvhdr = &s->qqflvhdr;
+            qqflvhdr->ucheck = 0;
+            pc = (u_char *) &qqflvhdr->ucheck;
+            pc[0] = ch;
+            state = qq_flv_ucheck1;
+            break;
+
+        case qq_flv_ucheck1:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->ucheck;
+            pc[1] = ch;
+            state = qq_flv_ucheck2;
+            break;
+
+        case qq_flv_ucheck2:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->ucheck;
+            pc[2] = ch;
+            state = qq_flv_ucheck3;
+            break;
+
+        case qq_flv_ucheck3:
+            qqflvhdr = &s->qqflvhdr;
+            pc = (u_char *) &qqflvhdr->ucheck;
+            pc[3] = ch;
+            switch (qqflvhdr->uckeyframe) {
+            case 0:
+                state = flv_header_F;
+                break;
+            case 1:
+            case 2:
+                state = flv_tagtype; 
+                break;
+            default:
+                rc = NGX_ERROR;
+                goto done;
+            }
+            break;
+
+
+
+        case flv_header_F:
+            switch (ch) {
+            case 'F':
+                state = flv_header_FL;
+                break;
+            default:
+                rc = NGX_ERROR;
+                goto done;
+            }
+            s->qq_flv_len--;
+            break;
+
+        case flv_header_FL:
+            switch (ch) {
+            case 'L':
+                state = flv_header_FLV;
+                break;
+            default:
+                rc = NGX_ERROR;
+                goto done;
+            }
+            s->qq_flv_len--;
+            break;
+
+        case flv_header_FLV:
+            switch (ch) {
+            case 'V':
+                state = flv_header_Version;
+                break;
+            default:
+                rc = NGX_ERROR;
+                goto done;
+            }
+            s->qq_flv_len--;
+            break;
+
+        case flv_header_Version:
+            s->flv_version = ch;
+            if (s->flv_version != 1) {
+                rc = NGX_ERROR;
+                goto done;
+            }
+            s->qq_flv_len--;
+            state = flv_header_Flags;
+            break;
+
+        case flv_header_Flags:
+            s->flv_flags = ch;
+            s->qq_flv_len--;
+            state = flv_header_DataOffset0;
+            break;
+
+        case flv_header_DataOffset0:
+            pc = (u_char *) &s->flv_data_offset;
+            pc[3] = ch;
+            s->qq_flv_len--;
+            state = flv_header_DataOffset1;
+            break;
+
+        case flv_header_DataOffset1:
+            pc = (u_char *) &s->flv_data_offset;
+            pc[2] = ch;
+            s->qq_flv_len--;
+            state = flv_header_DataOffset2;
+            break;
+
+        case flv_header_DataOffset2:
+            pc = (u_char *) &s->flv_data_offset;
+            pc[1] = ch;
+            s->qq_flv_len--;
+            state = flv_header_DataOffset3;
+            break;
+
+        case flv_header_DataOffset3:
+            pc = (u_char *) &s->flv_data_offset;
+            pc[0] = ch;
+            s->qq_flv_len--;
+            state = flv_tagsize0;
+            break;
+
+        case flv_tagsize0:
+            s->flv_tagsize = 0;
+            pc = (u_char *) &s->flv_tagsize;
+            pc[3] = ch;
+            s->qq_flv_len--;
+            state = flv_tagsize1;
+            break;
+
+        case flv_tagsize1:
+            pc = (u_char *) &s->flv_tagsize;
+            pc[2] = ch;
+            s->qq_flv_len--;
+            state = flv_tagsize2;
+            break;
+
+        case flv_tagsize2:
+            pc = (u_char *) &s->flv_tagsize;
+            pc[1] = ch;
+            s->qq_flv_len--;
+            state = flv_tagsize3;
+            break;
+
+        case flv_tagsize3:
+            pc = (u_char *) &s->flv_tagsize;
+            pc[0] = ch;
+
+            st = &s->in_streams[0];
+            h = &st->hdr;
+
+            if (h->mlen == 0) {
+                if (s->flv_tagsize != 0) {
+                    rc = NGX_ERROR;
+                    goto done;
+                }
+            } else {
+                if (h->mlen + 11 != s->flv_tagsize) {
+                    rc = NGX_ERROR;
+                    goto done;
+                }
+            }
+            s->qq_flv_len--;
+            if (s->qq_flv_len != 0) {
+                state = flv_tagtype;
+            }else {
+                state = qq_flv_usize0;
+            }            
+
+            break;
+
+        case flv_tagtype:
+            if (ch != NGX_RTMP_MSG_AMF_META && ch != NGX_RTMP_MSG_AUDIO
+                    && ch != NGX_RTMP_MSG_VIDEO)
+            {
+                rc = NGX_ERROR;
+                goto done;
+            }
+
+            st = &s->in_streams[0];
+            h = &st->hdr;
+            h->type = ch;
+            state = flv_datasize0;
+            s->qq_flv_len--;
+            break;
+
+        case flv_datasize0:
+            st = &s->in_streams[0];
+            h = &st->hdr;
+            h->mlen = 0;
+            pc = (u_char *) &h->mlen;
+
+            pc[2] = ch;
+            state = flv_datasize1;
+            s->qq_flv_len--;
+            break;
+
+        case flv_datasize1:
+            st = &s->in_streams[0];
+            h = &st->hdr;
+            pc = (u_char *) &h->mlen;
+
+            pc[1] = ch;
+            state = flv_datasize2;
+            s->qq_flv_len--;
+            break;
+
+        case flv_datasize2:
+            st = &s->in_streams[0];
+            h = &st->hdr;
+            pc = (u_char *) &h->mlen;
+
+            pc[0] = ch;
+            state = flv_timestamp0;
+            st->len = h->mlen;
+            s->qq_flv_len--;
+            break;
+
+        case flv_timestamp0:
+            st = &s->in_streams[0];
+            h = &st->hdr;
+            pc = (u_char *) &h->timestamp;
+
+            pc[2] = ch;
+            state = flv_timestamp1;
+            s->qq_flv_len--;
+            break;
+
+        case flv_timestamp1:
+            st = &s->in_streams[0];
+            h = &st->hdr;
+            pc = (u_char *) &h->timestamp;
+
+            pc[1] = ch;
+            state = flv_timestamp2;
+            s->qq_flv_len--;
+            break;
+
+        case flv_timestamp2:
+            st = &s->in_streams[0];
+            h = &st->hdr;
+            pc = (u_char *) &h->timestamp;
+
+            pc[0] = ch;
+            state = flv_timestamp_extended;
+            s->qq_flv_len--;
+            break;
+
+        case flv_timestamp_extended:
+            st = &s->in_streams[0];
+            h = &st->hdr;
+            pc = (u_char *) &h->timestamp;
+
+            pc[3] = ch;
+            state = flv_streamid0;
+            s->qq_flv_len--;
+            break;
+
+        case flv_streamid0:
+            st = &s->in_streams[0];
+            h = &st->hdr;
+            h->msid = 0;
+            pc = (u_char *) &h->msid;
+
+            pc[2] = ch;
+            state = flv_streamid1;
+            s->qq_flv_len--;
+            break;
+
+        case flv_streamid1:
+            st = &s->in_streams[0];
+            h = &st->hdr;
+            pc = (u_char *) &h->msid;
+
+            pc[1] = ch;
+            state = flv_streamid2;
+            s->qq_flv_len--;
+            break;
+
+        case flv_streamid2:
+            st = &s->in_streams[0];
+            h = &st->hdr;
+            pc = (u_char *) &h->msid;
+
+            pc[0] = ch;
+            state = flv_data;
+            s->qq_flv_len--;
+            break;
+
+        case flv_data:
+            st = &s->in_streams[0];
+
+            for (ll = &st->in; (*ll) && (*ll)->buf->last == (*ll)->buf->end;
+                    ll = &(*ll)->next);
+
+            for (;;) {
+                if (*ll == NULL) {
+                    *ll = ngx_get_chainbuf(cscf->chunk_size, 1);
+                }
+
+                len = ngx_min(st->len, b->last - p);
+                len = ngx_min(s->qq_flv_len, len);
+                if ((*ll)->buf->end - (*ll)->buf->last >= (long) len) {
+                    (*ll)->buf->last = ngx_cpymem((*ll)->buf->last, p, len);
+                    p += len;
+                    st->len -= len;
+                    s->qq_flv_len -= len;
+                    break;
+                }
+
+                len = (*ll)->buf->end - (*ll)->buf->last;
+                (*ll)->buf->last = ngx_cpymem((*ll)->buf->last, p, len);
+                p += len;
+                st->len -= len;
+                s->qq_flv_len -= len;
+                ll = &(*ll)->next;
+            }
+
+            if (st->len != 0) {
+                rc = NGX_AGAIN;
+                goto done;
+            }
+
+            if (s->qq_flv_len != 0) {
+                state = flv_tagsize0;
+                rc = NGX_OK;
+                goto done;
+            }
+
+            state = qq_flv_usize0;
+            rc = NGX_OK;
+            goto done;
+        }
+    }
+
+done:
+    b->pos = p;
+    s->qq_flv_state = state;
+
+    /* qq flv header */
+    if (rc == NGX_OK) {
+        st = &s->in_streams[0];
+        h = &st->hdr;
+        h->qqhdrtype = s->qqhdrtype;
+        if (s->qqhdrtype == NGX_RTMP_HEADER_TYPE_QQ_FLV) {
+            s->qqhdrtype = NGX_RTMP_HEADER_TYPE_DEFAULT;
+            qqflvhdr = &h->qqflvhdr;
+            qqflvhdr->usize = (&s->qqflvhdr)->usize;
+            qqflvhdr->huheadersize = (&s->qqflvhdr)->huheadersize;
+            qqflvhdr->huversion = (&s->qqflvhdr)->huversion;
+            qqflvhdr->uctype = (&s->qqflvhdr)->uctype;
+            qqflvhdr->uckeyframe = (&s->qqflvhdr)->uckeyframe;
+            qqflvhdr->usec = (&s->qqflvhdr)->usec;
+            qqflvhdr->useq = (&s->qqflvhdr)->useq;
+            qqflvhdr->usegid = (&s->qqflvhdr)->usegid;
+            qqflvhdr->ucheck = (&s->qqflvhdr)->ucheck;
+
+            /*printf("usize:\t%u\n", qqflvhdr->usize);
+            printf("huheadersize:\t%u\n", qqflvhdr->huheadersize);
+            printf("huversion:\t%u\n", qqflvhdr->huversion);
+            printf("uctype:\t%u\n", qqflvhdr->uctype);
+            printf("uckeyframe:\t%u\n", qqflvhdr->uckeyframe);
+            printf("usec:\t%u\n", qqflvhdr->usec);
+            printf("useq:\t%u\n", qqflvhdr->useq);
+            printf("usegid:\t%u\n", qqflvhdr->usegid);
+            printf("ucheck:\t%u\n", qqflvhdr->ucheck);*/
+        }        
+    }
+
+    return rc;
+}
+
 static ngx_qq_flv_index_t *
 ngx_http_qqflv_create_channel(ngx_str_t *channel_name, uint32_t backdelay, 
 							unsigned buname, unsigned playbackchannel)

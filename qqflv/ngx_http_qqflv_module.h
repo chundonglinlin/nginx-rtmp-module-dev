@@ -63,4 +63,6 @@ ngx_int_t ngx_http_qqflv_open_index_file(ngx_str_t *path, ngx_file_t *index_file
                                     ngx_log_t *log, ngx_str_t *id, ngx_flag_t *lock_file, 
                                     u_char *channel_name);
 
+ngx_int_t ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b);
+
 #endif
