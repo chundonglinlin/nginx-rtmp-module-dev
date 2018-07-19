@@ -24,6 +24,7 @@ typedef struct {
 typedef struct {
     unsigned                        buname:1;
     unsigned                        xHttpTrunk:1;
+    unsigned                        block_sent:1;
     unsigned                        type:3;
     ngx_int_t                       backsec;    
     ngx_int_t                       blockid;
