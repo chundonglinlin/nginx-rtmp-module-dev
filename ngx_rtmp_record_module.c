@@ -1111,7 +1111,12 @@ ngx_rtmp_record_write_frame(ngx_rtmp_session_t *s,
     *ph++ = p[1];
     *ph++ = p[0];
 
-    p = (u_char*)&timestamp;
+    if (h->qqhdrtype == NGX_RTMP_HEADER_TYPE_QQ_FLV) {
+        p = (u_char*)&h->timestamp;
+    } else {
+        p = (u_char*)&timestamp;
+    }
+    
     *ph++ = p[2];
     *ph++ = p[1];
     *ph++ = p[0];
