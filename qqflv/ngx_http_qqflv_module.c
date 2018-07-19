@@ -629,7 +629,8 @@ ngx_http_qqflv_playback_handler(ngx_http_request_t *r)
     }
 
     ctx->qq_flv_block_index = qq_flv_block_index;
-
+    ctx->file.fd = NGX_INVALID_FILE;
+    
     r->headers_out.status = NGX_HTTP_OK;
 
     h = qqflv_headers;
