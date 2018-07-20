@@ -41,6 +41,12 @@ static ngx_keyval_t qqflv_headers[] = {
     { ngx_null_string, ngx_null_string }
 };
 
+static ngx_keyval_t ngx_http_qqflv_live_headers[] = {
+    { ngx_string("Cache-Control"),  ngx_string("no-cache") },
+    { ngx_string("Content-Type"),   ngx_string("video/x-flv") },
+    { ngx_null_string, ngx_null_string }
+};
+
 static ngx_http_qqflv_main_conf_t   *qqflv_main_conf = NULL;
 
 static ngx_command_t ngx_http_qqflv_commands[] = {
@@ -198,6 +204,8 @@ static void ngx_qq_backdelay_timeout_handler(ngx_event_t *event)
 
 }
 
+
+
 static ngx_int_t
 ngx_http_qqflv_send_header(ngx_http_request_t *r)
 {
@@ -207,7 +215,7 @@ ngx_http_qqflv_send_header(ngx_http_request_t *r)
     r->headers_out.status = NGX_HTTP_OK;
     r->keepalive = 0; /* set Connection to closed */
 
-    h = qqflv_headers;
+    h = ngx_http_qqflv_live_headers;
     while (h->key.len) {
         rc = ngx_http_set_header_out(r, &h->key, &h->value);
         if (rc != NGX_OK) {
