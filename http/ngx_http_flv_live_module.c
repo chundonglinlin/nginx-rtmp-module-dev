@@ -12,6 +12,7 @@
 #include "ngx_rbuf.h"
 #include "ngx_http_set_header.h"
 #include "ngx_rtmp_monitor_module.h"
+#include "../qqflv/ngx_http_qqflv_module.h"
 
 
 static char *ngx_http_flv_live(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
