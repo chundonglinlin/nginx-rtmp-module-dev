@@ -332,6 +332,7 @@ struct ngx_rtmp_session_s {
 
     ngx_qq_flv_header_t             qqflvhdr;
     unsigned                        xHttpTrunk:1;
+    ngx_qq_flv_index_t              *qq_flv_index;
 
     /* groupid for notify|control*/
     ngx_str_t                       groupid;
