@@ -1740,6 +1740,9 @@ ngx_http_qqflv_piece_handler(ngx_http_request_t *r)
             range = &(r->headers_in.range)->value;
             for (tp = range->data; tp < range->data + range->len;)
             {
+                if (ngx_strstr(range->data, (u_char *) "pieces=")) {
+                    break;
+                }
                 start = end = INT_MAX;
                 tp = ngx_http_qqflv_parse_range(tp, range->data + range->len, &start, &end);
                 printf("range: %u-%u\n", start, end);
@@ -1791,7 +1794,7 @@ ngx_http_qqflv_piece_handler(ngx_http_request_t *r)
     head->buf->memory = 1;
     head->buf->last_in_chain = 1;
     head->buf->last_buf = 1;
-    
+
     return ngx_http_output_filter(r, head);
 }
 
@@ -1841,6 +1844,9 @@ ngx_http_qqflv_block_handler(ngx_http_request_t *r)
         range = &(r->headers_in.range)->value;
         for (tp = range->data; tp < range->data + range->len;)
         {
+            if (ngx_strstr(range->data, (u_char *) "blocks=")) {
+                break;
+            }
             start = end = INT_MAX;
             tp = ngx_http_qqflv_parse_range(tp, range->data + range->len, &start, &end);
             printf("range: %u-%u\n", start, end);
@@ -1887,6 +1893,12 @@ ngx_http_qqflv_block_handler(ngx_http_request_t *r)
             ngx_close_file(ctx->file.fd);
             ctx->file.fd == NGX_INVALID_FILE;
         }
+    } else {
+        r->header_only = 1;
+    }
+
+    if (head == NULL) {
+        r->header_only = 1;
     }
 
     r->headers_out.status = NGX_HTTP_OK;
