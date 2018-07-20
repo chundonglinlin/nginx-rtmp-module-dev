@@ -193,6 +193,7 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
     ngx_rtmp_stream_t          *st;
     ngx_rtmp_header_t          *h;
     ngx_qq_flv_header_t        *qqflvhdr;
+    ngx_qq_flv_index_t         *qq_flv_index;
     ngx_chain_t               **ll;
     size_t                      len;
     ngx_rtmp_core_srv_conf_t   *cscf;
@@ -255,9 +256,27 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
     state = s->qq_flv_state;
     cscf = ngx_rtmp_get_module_srv_conf(s, ngx_rtmp_core_module);
 
+    qq_flv_index = ngx_http_qqflv_find_channel(&s->name);
+    if (qq_flv_index == NULL) {
+        qq_flv_index = ngx_http_qqflv_create_channel(&s->name, 0, 0, 0);
+    }
+
     for (p = b->pos; p < b->last; ++p) {
         ch = *p;
 
+        if (state >= flv_header_F && s->qqflvhdr.uckeyframe == 0) {            
+            if (qq_flv_index->meta_data.data == NULL) {
+                ngx_http_qqflv_make_header(qq_flv_index->meta_header, &s->qqflvhdr, &s->qqflvhdr.usize,
+                                        &s->qqflvhdr.useq, s->qqflvhdr.usegid);
+                qq_flv_index->meta_data.data = ngx_palloc(qqflv_main_conf->pool, s->qqflvhdr.usize);
+                qq_flv_index->meta_data.len = 0;
+            }
+            if (qq_flv_index->meta_data.len < s->qqflvhdr.usize) {
+                *(qq_flv_index->meta_data.data + qq_flv_index->meta_data.len) = ch;
+                qq_flv_index->meta_data.len++;
+            }        
+        }
+        
         switch (state) {
 
         case qq_flv_usize0:
@@ -727,6 +746,11 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
                 len = ngx_min(st->len, b->last - p);
                 len = ngx_min(s->qq_flv_len, len);
                 if ((*ll)->buf->end - (*ll)->buf->last >= (long) len) {
+                    if (s->qqflvhdr.uckeyframe == 0) {   
+                        ngx_cpymem(qq_flv_index->meta_data.data + qq_flv_index->meta_data.len, p, len);
+                        qq_flv_index->meta_data.len += len;    
+                    }
+
                     (*ll)->buf->last = ngx_cpymem((*ll)->buf->last, p, len);
                     p += len;
                     st->len -= len;
@@ -735,6 +759,10 @@ ngx_http_relay_parse_qq_flv(ngx_rtmp_session_t *s, ngx_buf_t *b)
                 }
 
                 len = (*ll)->buf->end - (*ll)->buf->last;
+                if (s->qqflvhdr.uckeyframe == 0) {   
+                    ngx_cpymem(qq_flv_index->meta_data.data + qq_flv_index->meta_data.len, p, len);
+                    qq_flv_index->meta_data.len += len;    
+                }
                 (*ll)->buf->last = ngx_cpymem((*ll)->buf->last, p, len);
                 p += len;
                 st->len -= len;
@@ -812,6 +840,7 @@ ngx_http_qqflv_create_channel(ngx_str_t *channel_name, uint32_t backdelay,
     }
     qq_flv_index->channel_name = *channel_name;
     qq_flv_index->current_time = 0;
+    qq_flv_index->meta_data.data = NULL;
     ngx_queue_init(&qq_flv_index->index_queue);
     ngx_queue_init(&qq_flv_index->keyframe_queue);
     ngx_map_init(&qq_flv_index->block_map, ngx_map_hash_str, ngx_cmp_str);
@@ -1202,9 +1231,21 @@ ngx_http_qqflv_prepare_out_chain(ngx_http_qqflv_ctx_t *ctx, unsigned sourceflag)
     qqflvhdr = &qq_flv_block_index->qqflvhdr;
 
     if (!ctx->header_sent) {
+        if (sourceflag) {
+            (*ll) = ngx_get_chainbuf(0, 0);
+            if (*ll == NULL) {
+                return;
+            }
+            (*ll)->buf->pos =  ctx->qq_flv_index->meta_header;
+            (*ll)->buf->last = ctx->qq_flv_index->meta_header + NGX_QQ_FLV_HEADER_SIZE;
+            ll = &(*ll)->next;
+        }
         (*ll) = ngx_get_chainbuf(0, 0);
-        (*ll)->buf->pos = ngx_flv_live_header;
-        (*ll)->buf->last = ngx_flv_live_header + sizeof(ngx_flv_live_header) - 1;
+        if (*ll == NULL) {
+            return;
+        }
+        (*ll)->buf->pos = ctx->qq_flv_index->meta_data.data;
+        (*ll)->buf->last = ctx->qq_flv_index->meta_data.data + ctx->qq_flv_index->meta_data.len;
         ll = &(*ll)->next;
         ctx->header_sent = 1;
     }

@@ -122,19 +122,6 @@ typedef struct {
 #define NGX_QQ_FLV_HEADER_SIZE          26
 
 typedef struct {
-    ngx_str_t                       channel_name;
-    unsigned                        playbackchannel:1;
-    uint32_t                        backdelay;               //缓冲时间，qqlive默认为15，qt为45，回看频道由回看列表决定
-    unsigned                        buname:1;                //0-qqlive,1-qt  
-    ngx_map_node_t                  node;
-    ngx_map_t                       block_map;
-    ngx_queue_t                     index_queue;
-    ngx_queue_t                     keyframe_queue;
-    ngx_queue_t                     q;
-    uint32_t                        current_time;
-} ngx_qq_flv_index_t;
-
-typedef struct {
     uint32_t                        usize;                   //大小(数据部分大小)
     uint16_t                        huheadersize;            //本数据结构头的大小，为26
     uint16_t                        huversion;               //版本号,一般为0
@@ -145,6 +132,22 @@ typedef struct {
     uint32_t                        usegid;                  //段ID，确保全局唯一或者其代表的flv头是唯一的
     uint32_t                        ucheck;                  //校验和，本结构体后面数据内容的校验和
 } ngx_qq_flv_header_t;
+
+typedef struct {
+    ngx_str_t                       channel_name;
+    unsigned                        playbackchannel:1;
+    uint32_t                        backdelay;               //缓冲时间，qqlive默认为15，qt为45，回看频道由回看列表决定
+    unsigned                        buname:1;                //0-qqlive,1-qt  
+    ngx_map_node_t                  node;
+    ngx_map_t                       block_map;
+    ngx_queue_t                     index_queue;
+    ngx_queue_t                     keyframe_queue;
+    ngx_queue_t                     q;
+    uint32_t                        current_time;
+
+    u_char                          meta_header[NGX_QQ_FLV_HEADER_SIZE];
+    ngx_str_t                       meta_data;
+} ngx_qq_flv_index_t;
 
 typedef struct {    
     ngx_qq_flv_header_t             qqflvhdr;                 
