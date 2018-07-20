@@ -256,8 +256,8 @@ ngx_http_qqflv_live_prepare_out_chain(ngx_http_request_t *r,
         qq_flv_index = ngx_http_qqflv_find_channel(&s->name);
         if (qq_flv_index) {
             if(sourceflag) {
-                (*ll)->buf->pos = s->qq_flv_index->meta_header;
-                (*ll)->buf->last = s->qq_flv_index->meta_header + NGX_QQ_FLV_HEADER_SIZE;
+                (*ll)->buf->pos = qq_flv_index->meta_header;
+                (*ll)->buf->last = qq_flv_index->meta_header + NGX_QQ_FLV_HEADER_SIZE;
                 ll = &(*ll)->next;
                 *ll = ngx_get_chainbuf(0, 0);
                 if (*ll == NULL) {
@@ -265,9 +265,8 @@ ngx_http_qqflv_live_prepare_out_chain(ngx_http_request_t *r,
                 }
             }
 
-            (*ll)->buf->pos = s->qq_flv_index->meta_data.data;
-            (*ll)->buf->last = s->qq_flv_index->meta_data.data + s->qq_flv_index->meta_data.len;
-            ll = &(*ll)->next;
+            (*ll)->buf->pos = qq_flv_index->meta_data.data;
+            (*ll)->buf->last = qq_flv_index->meta_data.data + qq_flv_index->meta_data.len;
         } else {
             printf("null\n");
             if (s->filter == NGX_RTMP_FILTER_KEEPAUDIO) {
@@ -279,8 +278,10 @@ ngx_http_qqflv_live_prepare_out_chain(ngx_http_request_t *r,
                 (*ll)->buf->last = ngx_flv_live_header
                                       + sizeof(ngx_flv_live_header) - 1;
             }
-            ll = &(*ll)->next;
         }
+        (*ll)->buf->flush = 1;
+        ngx_rtmp_monitor_frame(s, &frame->hdr, NULL, frame->av_header, 0);
+        return head;
     }
 
     if (frame->hdr.type == NGX_RTMP_MSG_VIDEO || frame->hdr.type == NGX_RTMP_MSG_AUDIO)
