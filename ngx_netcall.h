@@ -19,6 +19,7 @@ struct ngx_netcall_ctx_s {
     ngx_pool_t                 *pool;
 
     ngx_str_t                   url;
+    ngx_keyval_t               *headers;
 
     ngx_uint_t                  idx;
     ngx_uint_t                  type;

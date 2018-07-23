@@ -173,6 +173,7 @@ ngx_http_qqflv_init_main_conf(ngx_conf_t *cf, void *conf)
     ngx_map_init(&qmcf->channel_map, ngx_map_hash_str, ngx_cmp_str);
     ngx_queue_init(&qmcf->channel_queue);
     ngx_queue_init(&qmcf->idle_block_index);
+    ngx_queue_init(&qmcf->repair_queue);
 
     qqflv_main_conf = conf;
 
@@ -1046,6 +1047,7 @@ ngx_http_qqflv_create_channel(ngx_str_t *channel_name, uint32_t backdelay,
     ngx_queue_init(&qq_flv_index->index_queue);
     ngx_queue_init(&qq_flv_index->keyframe_queue);
     ngx_map_init(&qq_flv_index->block_map, ngx_map_hash_str, ngx_cmp_str);
+    ngx_map_init(&qq_flv_index->repair_map, ngx_map_hash_str, ngx_cmp_str);
     qq_flv_index->node.raw_key = (intptr_t) &qq_flv_index->channel_name;
     ngx_map_insert(&qqflv_main_conf->channel_map, &qq_flv_index->node, 0);
     ngx_queue_insert_tail(&qqflv_main_conf->channel_queue, &qq_flv_index->q);
@@ -1835,8 +1837,9 @@ static ngx_int_t ngx_http_qqflv_make_block_repair(ngx_qq_flv_index_t *qq_flv_ind
     }
     
     qq_flv_block_index->qqflvhdr.useq = blockid;
+    qq_flv_block_index->qq_flv_index = qq_flv_index;
 
-    ngx_queue_insert_tail(&qq_flv_index->repair_queue, &qq_flv_block_index->q);
+    ngx_queue_insert_tail(&qqflv_main_conf->repair_queue, &qq_flv_block_index->q);
     qq_flv_block_index->block_key.data = &qq_flv_block_index->qqflvhdr.useq;
     qq_flv_block_index->block_key.len = sizeof(uint32_t);
     qq_flv_block_index->node.raw_key = (intptr_t) &qq_flv_block_index->block_key;
@@ -2236,10 +2239,82 @@ static ngx_int_t ngx_http_qqflv_init_process(ngx_cycle_t *cycle)
 	if (qmcf->path.len > 0) {
 		ngx_http_qqflv_read_index(qmcf);
 	}
+
+    qmcf->repair_ev.handler = ngx_http_qqflv_block_repair_handler;
+    qmcf->repair_ev.log = cycle->log;
+    qmcf->repair_ev.data = qmcf;
+    qmcf->repair_ev.timer_set = 0;
+
+    ngx_add_timer(&qmcf->repair_ev, 5 * 1000);
+
     return NGX_OK;
 }
 
+static void
+ngx_rtmp_oclp_block_repair_test_handle(ngx_netcall_ctx_t *nctx, ngx_int_t code)
+{
+    printf("123aaz\n");
+    return;
+}
 
+static ngx_int_t
+ngx_http_qqflv_block_repair_handler(ngx_event_t *event)
+{ 
+    static u_char                       buf[NGX_MAX_PATH + 1];
+    static u_char                       rbuf[NGX_MAX_PATH + 1];
+    u_char                             *p;
+    static ngx_str_t                    request_url;
+    ngx_queue_t                        *tq;
+    ngx_qq_flv_block_index_t           *qq_flv_block_index;    
+    ngx_netcall_ctx_t                  *nctx;
+
+    static ngx_keyval_t repair_headers[] = {
+        { ngx_string("Host"),   ngx_string("dnion.video.qq.com") },
+        { ngx_string("Range"),  ngx_null_string },
+        { ngx_string("User-Agent"),  ngx_string("DnionLive") },
+        { ngx_string("Connection"),  ngx_string("close") },
+        { ngx_null_string, ngx_null_string }
+    };
+
+    while (!ngx_queue_empty(&qqflv_main_conf->repair_queue)) {
+        tq = ngx_queue_head(&qqflv_main_conf->repair_queue);
+        ngx_queue_remove(tq);
+        qq_flv_block_index = ngx_queue_data(tq, ngx_qq_flv_block_index_t, q);
+        if (qq_flv_block_index == NULL) {
+            continue;
+        }
+
+        p = buf;
+        request_url.data = buf;
+
+        p = ngx_cpymem(p, (u_char *) "http://121.11.80.117:80/", sizeof("http://121.11.80.117:80/") - 1);
+        p = ngx_cpymem(p, qq_flv_block_index->qq_flv_index->channel_name.data, 
+                qq_flv_block_index->qq_flv_index->channel_name.len - 1);
+
+        p = ngx_cpymem(p, (u_char *) ".flv?apptype=flashp2p&xHttpTrunk=1&version=0&protocol=1795&buname=",
+                sizeof(".flv?apptype=flashp2p&xHttpTrunk=1&version=0&protocol=1795&buname=") - 1);
+        if (qq_flv_block_index->qq_flv_index->buname) {
+            p = ngx_cpymem(p, (u_char *) "qt", sizeof("qt") - 1);
+        } else {
+            p = ngx_cpymem(p, (u_char *) "qqlive", sizeof("qqlive") - 1);
+        }
+
+        *p = 0;
+        request_url.len = p - buf;
+
+        repair_headers[1].value.len = ngx_sprintf(rbuf, "blocks=%u-%u", qq_flv_block_index->qqflvhdr.useq, 
+                                            qq_flv_block_index->qqflvhdr.useq);
+        repair_headers[1].value.data = rbuf;
+
+
+        nctx = ngx_netcall_create_ctx(0, &request_url, 1, 5000, 5, 0, 0);
+        nctx->url = request_url;
+        nctx->headers = repair_headers;
+        nctx->handler = ngx_rtmp_oclp_block_repair_test_handle;
+        ngx_netcall_create(nctx, NULL);
+    }
+    ngx_add_timer(event, 5 * 1000);
+}
 
 
 static ngx_int_t

@@ -18,7 +18,9 @@ typedef struct {
     ngx_pool_t                     *pool;
     ngx_map_t                       channel_map;
     ngx_queue_t                     channel_queue;
+    ngx_queue_t                     repair_queue;
     ngx_queue_t                     idle_block_index;
+    ngx_event_t                     repair_ev;
 } ngx_http_qqflv_main_conf_t;
 
 typedef struct {

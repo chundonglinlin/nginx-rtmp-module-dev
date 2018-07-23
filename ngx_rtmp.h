@@ -141,7 +141,6 @@ typedef struct {
     ngx_map_node_t                  node;
     ngx_map_t                       block_map;
     ngx_map_t                       repair_map;
-    ngx_queue_t                     repair_queue;
     ngx_queue_t                     index_queue;
     ngx_queue_t                     keyframe_queue;
     ngx_queue_t                     q;
@@ -152,6 +151,7 @@ typedef struct {
 } ngx_qq_flv_index_t;
 
 typedef struct {    
+    ngx_qq_flv_index_t              *qq_flv_index;
     ngx_qq_flv_header_t             qqflvhdr;                 
     off_t                           file_offset;             //文件索引
     time_t                          timestamp;               //记录文件时间

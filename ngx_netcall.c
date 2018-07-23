@@ -144,7 +144,7 @@ ngx_netcall_create(ngx_netcall_ctx_t *nctx, ngx_log_t *log)
     ngx_http_cleanup_t         *cln;
 
     hcr = ngx_http_client_create_request(&nctx->url, NGX_HTTP_CLIENT_GET,
-            NGX_HTTP_CLIENT_VERSION_10, NULL, log, ngx_netcall_handler, NULL);
+            NGX_HTTP_CLIENT_VERSION_10, nctx->headers, log, ngx_netcall_handler, NULL);
     if (hcr == NULL) {
         return;
     }
