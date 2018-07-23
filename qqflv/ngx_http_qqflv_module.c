@@ -3,6 +3,7 @@
 #include <ngx_http.h>
 #include "ngx_http_qqflv_module.h"
 #include "../http/ngx_http_set_header.h"
+#include "../libVerifyTS/libVerifyTSLive.h"
 
 #define NGX_FLV_TAG_SIZE        11
 #define NGX_FLV_PTS_SIZE        4
