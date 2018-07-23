@@ -140,6 +140,8 @@ typedef struct {
     unsigned                        buname:1;                //0-qqlive,1-qt  
     ngx_map_node_t                  node;
     ngx_map_t                       block_map;
+    ngx_map_t                       repair_map;
+    ngx_queue_t                     repair_queue;
     ngx_queue_t                     index_queue;
     ngx_queue_t                     keyframe_queue;
     ngx_queue_t                     q;
