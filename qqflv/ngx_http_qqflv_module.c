@@ -3,7 +3,7 @@
 #include <ngx_http.h>
 #include "ngx_http_qqflv_module.h"
 #include "../http/ngx_http_set_header.h"
-#include "../libVerifyTS/libVerifyTSLive.h"
+//#include "../libVerifyTS/libVerifyTSLive.h"
 
 #define NGX_FLV_TAG_SIZE        11
 #define NGX_FLV_PTS_SIZE        4
@@ -1935,7 +1935,7 @@ ngx_http_qqflv_parse_request(ngx_http_request_t *r)
     ngx_http_qqflv_ctx_t           *ctx;
     ngx_log_t                      *log;
     u_char                         *p;
-    ngx_str_t                       data;
+    ngx_str_t                       data, vkey;
     ngx_int_t                       protocol;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_qqflv_module);
@@ -2060,6 +2060,27 @@ ngx_http_qqflv_parse_request(ngx_http_request_t *r)
         }
         break;
     }
+    /*if (ctx->type == NGX_HTTP_QQFLV_PLAYBACK || ctx->type == NGX_HTTP_QQFLV_NORMAL) {        
+        ngx_http_arg(r, (u_char *) "vkey", sizeof("vkey") - 1, &vkey);
+        ngx_int_t keyflag = ctx->buname ? 3 : 11;
+        stKeyLive keyLive;
+        keyLive.cdnIP = 9887;
+        ngx_int_t res = qqvideo_verifyLiveTstreamKey(20120814, 00000000, "100103700.flv",
+                                            1,
+                                            &keyLive.uin,
+                                            &keyLive.speed,
+                                            &keyLive.platform,
+                                            &keyLive.start_time,
+                                            &keyLive.end_time,
+                                            &keyLive.dtfrom,
+                                            &keyLive.cgi_name,
+                                            keyLive.cdnIP,
+                                            &keyLive.streamID,
+                                            vkey.data, vkey.len, keyflag, 16);
+        printf("%d-%d\n", keyLive.speed, keyLive.end_time);
+    }*/
+    
+
 
     if (ctx->type == NGX_HTTP_QQFLV_PLAYBACK && ctx->buname) {
         return NGX_ERROR;
