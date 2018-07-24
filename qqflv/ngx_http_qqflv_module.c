@@ -32,6 +32,7 @@ static u_char * ngx_http_qqflv_read_source_file(u_char *p, ngx_file_t *file, con
     const uint32_t *size);
 static void ngx_http_qqflv_playback_write_handler(ngx_http_request_t *r);
 static ngx_chain_t * ngx_http_qqflv_create_chain_t(ngx_pool_t *pool, size_t size);
+static ngx_int_t ngx_http_qqflv_block_repair_handler(ngx_event_t *event);
 
 static ngx_qq_flv_index_t *
 ngx_http_qqflv_create_channel(ngx_str_t *channel_name, uint32_t backdelay, unsigned buname, unsigned playbackchannel);
@@ -1745,7 +1746,7 @@ ngx_http_qqflv_piece_handler(ngx_http_request_t *r)
             range = &(r->headers_in.range)->value;
             for (tp = range->data; tp < range->data + range->len;)
             {
-                if (ngx_strstr(range->data, (u_char *) "pieces=")) {
+                if (!ngx_strstr(range->data, (u_char *) "pieces=")) {
                     break;
                 }
                 start = end = INT_MAX;
@@ -1876,7 +1877,7 @@ ngx_http_qqflv_block_handler(ngx_http_request_t *r)
         range = &(r->headers_in.range)->value;
         for (tp = range->data; tp < range->data + range->len;)
         {
-            if (ngx_strstr(range->data, (u_char *) "blocks=")) {
+            if (!ngx_strstr(range->data, (u_char *) "blocks=")) {
                 break;
             }
             start = end = INT_MAX;
@@ -1920,7 +1921,7 @@ ngx_http_qqflv_block_handler(ngx_http_request_t *r)
                     if (qq_flv_block_index) {
                     }
                     else {
-                        ngx_http_qqflv_make_block_repair(&ctx->qq_flv_index, i);
+                        ngx_http_qqflv_make_block_repair(ctx->qq_flv_index, i);
                         *ll = ngx_http_qqflv_create_chain_t(r->pool, NGX_QQ_FLV_HEADER_SIZE);
                         if (*ll == NULL) {
                             break;
@@ -2302,7 +2303,8 @@ ngx_http_qqflv_block_repair_handler(ngx_event_t *event)
         *p = 0;
         request_url.len = p - buf;
 
-        repair_headers[1].value.len = ngx_sprintf(rbuf, "blocks=%u-%u", qq_flv_block_index->qqflvhdr.useq, 
+        ngx_memzero(rbuf, sizeof(rbuf));
+        repair_headers[1].value.len = ngx_sprintf(rbuf, "blocks=%d-%d", qq_flv_block_index->qqflvhdr.useq, 
                                             qq_flv_block_index->qqflvhdr.useq);
         repair_headers[1].value.data = rbuf;
 
