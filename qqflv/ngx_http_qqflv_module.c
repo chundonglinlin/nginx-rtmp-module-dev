@@ -1807,22 +1807,44 @@ ngx_http_qqflv_create_chain_t(ngx_pool_t *pool, size_t size)
     ngx_chain_t                              *chain;
     ngx_buf_t                                *b;
     
-    b = ngx_create_temp_buf(pool, size);
-    if (b == NULL) {
-        return NULL;
+    if (size) {
+        b = ngx_create_temp_buf(pool, size);
+        if (b == NULL) {
+            return NULL;
+        }
+        chain = ngx_pcalloc(pool, sizeof(ngx_chain_t));
+        if (chain == NULL) {
+            return NULL;
+        }
+        chain->buf = b;
+    } else {
+        chain = ngx_pcalloc(pool, sizeof(ngx_chain_t));
+        if (chain == NULL) {
+            return NULL;
+        }
     }
-    chain = ngx_pcalloc(pool, sizeof(ngx_chain_t));
-    if (chain == NULL) {
-        return NULL;
-    }
-    chain->buf = b;
+    
     return chain;
+}
+
+static ngx_int_t mytest_post_handler(ngx_http_request_t *r)
+{
 }
 
 static ngx_int_t ngx_http_qqflv_block_subrequest_done(ngx_http_request_t *r, void *data, ngx_int_t rc)
 {
+    ngx_http_request_t                       *pr = r->parent;
+    ngx_chain_t                              **ll, *head;
+
+    head = ctx->head;
+    if (r->headers_out.status == NGX_HTTP_OK) {
+        for (ll = &head; *ll; ll = &(*ll)->next);
+        *ll = ngx_http_qqflv_create_chain_t(pr->pool, 0);
+        (*ll)->buf = &r->upstream->buffer;
+    }
+    //pr->write_event_handler = mytest_post_handler;
     printf("123\n");
-    return rc;
+    return NGX_OK;
 }
 
 static ngx_int_t ngx_http_qqflv_make_block_repair(ngx_http_request_t *r, ngx_http_qqflv_ctx_t *ctx, 
@@ -1863,9 +1885,9 @@ static ngx_int_t ngx_http_qqflv_make_block_repair(ngx_http_request_t *r, ngx_htt
     }
 
     ps->handler = ngx_http_qqflv_block_subrequest_done;
-    ps->data = ctx;
+    //ps->data = ctx;
 
-    if (ngx_http_subrequest(r, &uri, &args, &sr, ps, NGX_HTTP_SUBREQUEST_WAITED) != NGX_OK) {
+    if (ngx_http_subrequest(r, &uri, &args, &sr, ps, NGX_HTTP_SUBREQUEST_IN_MEMORY) != NGX_OK) {
         return NGX_ERROR;
     }
 
@@ -1935,18 +1957,13 @@ ngx_http_qqflv_block_handler(ngx_http_request_t *r)
                         ngx_http_qqflv_open_source_file(&ctx->file, &ctx->qq_flv_index->channel_name, &ctx->timestamp);
                     }                    
                     p = ngx_http_qqflv_read_source_file(p, &ctx->file, &qq_flv_block_index->file_offset, &qqflvhdr->usize);                    
-                    (*ll)->buf->last = p;  
+                    (*ll)->buf->last = p;
+                    ll = &(*ll)->next;
                 } else {
+                        ctx->head = head;
                         ngx_http_qqflv_make_block_repair(r, ctx, i);
-                        *ll = ngx_http_qqflv_create_chain_t(r->pool, NGX_QQ_FLV_HEADER_SIZE);
-                        if (*ll == NULL) {
-                            break;
-                        }
-                        p = (*ll)->buf->pos;
-                        p = ngx_http_qqflv_make_header(p, NULL, (u_char *) "\0", &i, INT_MAX);         
-                        (*ll)->buf->last = p;
-                }               
-                ll = &(*ll)->next;
+                        for (ll = &head; *ll; ll = &(*ll)->next);
+                }                
             }
             ngx_close_file(ctx->file.fd);
             ctx->file.fd == NGX_INVALID_FILE;

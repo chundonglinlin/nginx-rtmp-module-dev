@@ -22,6 +22,7 @@ typedef struct {
 } ngx_http_qqflv_main_conf_t;
 
 typedef struct {
+    ngx_chain_t                     *head;
     unsigned                        buname:1;
     unsigned                        xHttpTrunk:1;
     unsigned                        block_sent:1;
