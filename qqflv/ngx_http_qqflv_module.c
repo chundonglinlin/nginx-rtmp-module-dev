@@ -1041,7 +1041,10 @@ ngx_http_qqflv_create_channel(ngx_str_t *channel_name, uint32_t backdelay,
     else {
         qq_flv_index->backdelay = (backdelay == 0) ? 45 : backdelay;
     }
-    qq_flv_index->channel_name = *channel_name;
+    qq_flv_index->channel_name.data = ngx_palloc(qqflv_main_conf->pool, channel_name->len);
+    ngx_cpymem(qq_flv_index->channel_name.data, channel_name->data, channel_name->len);
+    qq_flv_index->channel_name.len = channel_name->len;
+    
     qq_flv_index->current_time = 0;
     qq_flv_index->meta_data.data = NULL;
     ngx_queue_init(&qq_flv_index->index_queue);
