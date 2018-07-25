@@ -22,13 +22,12 @@ typedef struct {
 } ngx_http_qqflv_main_conf_t;
 
 typedef struct {
-    ngx_chain_t                     *head;
     unsigned                        buname:1;
     unsigned                        xHttpTrunk:1;
     unsigned                        block_sent:1;
     unsigned                        type:3;
     ngx_int_t                       backsec;    
-    ngx_int_t                       blockid;
+    uint32_t                        blockid;
     ngx_int_t                       piecesize;
     ngx_str_t                       channel_name;
     time_t                          timestamp;
@@ -36,7 +35,13 @@ typedef struct {
     ngx_chain_t                    *out_chain;
     ngx_qq_flv_index_t             *qq_flv_index;
     ngx_qq_flv_block_index_t       *qq_flv_block_index;
+    ngx_queue_t                     intqueue;
 }ngx_http_qqflv_ctx_t;
+
+typedef struct {
+    uint32_t                        data;
+    ngx_queue_t                     q;
+}ngx_http_qqflv_intqueue_node_t;
 
 typedef ngx_int_t (*ngx_http_qqflv_request_handler_pt)(ngx_http_request_t *r);
 
