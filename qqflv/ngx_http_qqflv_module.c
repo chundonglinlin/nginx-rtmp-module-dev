@@ -1807,92 +1807,6 @@ ngx_http_qqflv_read_source_file(u_char *p, ngx_file_t *file, const off_t *offset
     return p + *size;
 }
 
-static ngx_int_t ngx_http_qqflv_block_write_handler(ngx_http_request_t *r)
-{
-    ngx_http_qqflv_ctx_t                     *ctx;
-    ngx_chain_t                              *cl, **ll;
-    ngx_buf_t                                *b;
-    ngx_queue_t                              *tq;
-    ngx_http_qqflv_intqueue_node_t           *intnode;
-    ngx_str_t                                 block_key;
-    ngx_map_node_t                           *node;
-    ngx_qq_flv_block_index_t                 *qq_flv_block_index;
-    ngx_qq_flv_header_t                      *qqflvhdr;
-    u_char                                   *p;
-    ngx_keyval_t                             *h;
-    ngx_int_t                                 rc;
-    ctx = ngx_http_get_module_ctx(r, ngx_http_qqflv_module);
-    printf("write handler");
-    for (ll = &ctx->out_chain; *ll; ll = &(*ll)->next);
-    block_key.len = sizeof(uint32_t);
-
-    while (!ngx_queue_empty(&ctx->intqueue)) {
-        tq = ngx_queue_head(&ctx->intqueue);
-        ngx_queue_remove(tq);
-        intnode = ngx_queue_data(tq, ngx_http_qqflv_intqueue_node_t, q);
-        block_key.data = &intnode->data;
-        node = qq_flv_block_index = NULL;
-        node = ngx_map_find(&ctx->qq_flv_index->block_map, (intptr_t) &block_key);
-        if (node) {
-            qq_flv_block_index = (ngx_qq_flv_block_index_t *)
-                    ((char *) node - offsetof(ngx_qq_flv_block_index_t, node));
-        }
-        if (qq_flv_block_index) {
-            qqflvhdr = &qq_flv_block_index->qqflvhdr;
-            *ll = ngx_http_qqflv_create_chain_t(r->pool, NGX_QQ_FLV_HEADER_SIZE + qqflvhdr->usize);
-            if (*ll == NULL) {
-                break;
-            }
-            p = (*ll)->buf->pos;
-            p = ngx_http_qqflv_make_header(p, qqflvhdr, &qqflvhdr->usize, &qqflvhdr->useq, INT_MAX);
-            if(ctx->timestamp != qq_flv_block_index->timestamp || ctx->file.fd == NGX_INVALID_FILE)
-            {
-                ctx->timestamp = qq_flv_block_index->timestamp;
-                ngx_close_file(ctx->file.fd);
-                ngx_http_qqflv_open_source_file(&ctx->file, &ctx->qq_flv_index->channel_name, &ctx->timestamp);
-            }
-             p = ngx_http_qqflv_read_source_file(p, &ctx->file, &qq_flv_block_index->file_offset, &qqflvhdr->usize);
-            (*ll)->buf->last = p;
-            ll = &(*ll)->next;
-        } else {
-            return ngx_http_qqflv_make_block_repair(r, intnode->data);
-        }
-    }
-
-    r->headers_out.content_length_n = 0;
-    r->header_only = 1;
-    if (ctx->out_chain) {
-        for (cl = ctx->out_chain; cl; cl = cl->next) {
-            b = cl->buf;
-            r->headers_out.content_length_n += b->last - b->pos;
-        }
-        b->last_buf = 1;
-        b->flush = 1;
-        b->last_in_chain = 1; 
-        r->header_only = 0;
-        r->connection->buffered |= NGX_HTTP_WRITE_BUFFERED;
-    }
-
-    r->headers_out.status = NGX_HTTP_OK;
-    h = qqflv_headers;
-    while (h->key.len) {
-        rc = ngx_http_set_header_out(r, &h->key, &h->value);
-        if (rc != NGX_OK) {
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }    
-        ++h; 
-    }
-
-    rc = ngx_http_send_header(r);
-    if( rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-        return rc;
-    }
-
-    rc = ngx_http_output_filter(r, ctx->out_chain);
-    ngx_http_finalize_request(r, rc);
-
-    return NGX_DONE;
-}
 
 static ngx_int_t ngx_http_qqflv_send_response(ngx_http_request_t *r)
 {
@@ -1900,6 +1814,7 @@ static ngx_int_t ngx_http_qqflv_send_response(ngx_http_request_t *r)
     ngx_buf_t                                *b;
     ngx_keyval_t                             *h;
     ngx_int_t                                 rc;
+    ngx_chain_t                              *cl;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_qqflv_module);
 
@@ -1941,9 +1856,17 @@ static ngx_int_t ngx_http_qqflv_send_response(ngx_http_request_t *r)
 static ngx_int_t ngx_http_qqflv_piece_write_handler(ngx_http_request_t *r)
 {
     ngx_http_qqflv_ctx_t                     *ctx;
-    ngx_chain_t                              *ll;
+    ngx_chain_t                             **ll;
     off_t                                     ReadPos;
+    uint32_t                                  ReadSize;
     ngx_http_qqflv_intqueue_node_t           *intnode;
+    ngx_str_t                                 block_key;
+    ngx_map_node_t                           *node;
+    ngx_qq_flv_block_index_t                 *qq_flv_block_index;
+    ngx_qq_flv_header_t                      *qqflvhdr;
+    ngx_file_t                                file;
+    u_char                                   *p;
+    ngx_queue_t                              *tq;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_qqflv_module);
     printf("piece write handler");
@@ -2002,7 +1925,7 @@ ngx_http_qqflv_piece_handler(ngx_http_request_t *r)
     ctx = ngx_http_get_module_ctx(r, ngx_http_qqflv_module);
     ngx_http_qqflv_parse_range_block(r, &ctx->intqueue);
 
-    return ngx_http_qqflv_block_write_handler(r);
+    return ngx_http_qqflv_piece_write_handler(r);
 }
 
 static ngx_chain_t *
