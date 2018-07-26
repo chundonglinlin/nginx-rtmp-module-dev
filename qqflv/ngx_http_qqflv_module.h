@@ -26,6 +26,8 @@ typedef struct {
     unsigned                        xHttpTrunk:1;
     unsigned                        block_sent:1;
     unsigned                        type:3;
+    unsigned                        done:1;
+    ngx_str_t                       strBlock;
     ngx_int_t                       backsec;    
     uint32_t                        blockid;
     ngx_int_t                       piecesize;
