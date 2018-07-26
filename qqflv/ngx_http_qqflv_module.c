@@ -1761,6 +1761,7 @@ static ngx_int_t ngx_http_qqflv_parse_range(ngx_http_request_t *r, u_char *skey)
                     node = ngx_palloc(r->pool, sizeof(ngx_http_qqflv_intqueue_node_t));
                     node->data = start;
                     ngx_queue_insert_tail(&ctx->intqueue, &node->q);
+                    size ++;
                 }
             }
         }
