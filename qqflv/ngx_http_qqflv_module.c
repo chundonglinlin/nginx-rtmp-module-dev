@@ -56,13 +56,7 @@ static ngx_int_t ngx_http_qqflv_block_write_handler(ngx_http_request_t *r);
 static ngx_int_t ngx_http_qqflv_make_block_repair(ngx_http_request_t *r, uint32_t blockid);
 static ngx_int_t ngx_http_qqflv_block_subrequest_done(ngx_http_request_t *r, void *data, ngx_int_t rc);
 
-
-
 static ngx_int_t ngx_http_qqflv_piece_handler(ngx_http_request_t *r);
-
-
-
-
 
 static ngx_int_t ngx_http_qqflv_range_get_variable(ngx_http_request_t *r, ngx_http_variable_value_t *v, uintptr_t data);
 
