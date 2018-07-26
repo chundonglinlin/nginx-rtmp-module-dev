@@ -36,6 +36,7 @@ typedef struct {
     ngx_qq_flv_index_t             *qq_flv_index;
     ngx_qq_flv_block_index_t       *qq_flv_block_index;
     ngx_queue_t                     intqueue;
+    ngx_str_t                       range;
 }ngx_http_qqflv_ctx_t;
 
 typedef struct {
