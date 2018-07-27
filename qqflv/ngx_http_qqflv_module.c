@@ -5,13 +5,7 @@
 #include "../http/ngx_http_set_header.h"
 //#include "../libVerifyTS/libVerifyTSLive.h"
 
-#define NGX_FLV_TAG_SIZE           11
-#define NGX_FLV_PTS_SIZE           4
 #define NGX_QQFLV_MAX_BLOCK_SIZE   2048
-#define ngx_null_qqflvhdr       {0, 0, 0, 0, 0, 0, 0, 0, 0}
-
-static u_char  ngx_flv_live_header[] = "FLV\x1\x5\0\0\0\x9\0\0\0\0";
-static u_char  ngx_flv_live_audio_header[] = "FLV\x1\x4\0\0\0\x9\0\0\0\0";
 
 static ngx_int_t ngx_http_qqflv_add_value(ngx_conf_t *cf);
 static ngx_int_t ngx_http_qqflv_postconfiguration(ngx_conf_t *cf);
