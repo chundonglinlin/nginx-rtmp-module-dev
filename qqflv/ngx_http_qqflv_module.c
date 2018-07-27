@@ -48,7 +48,7 @@ static ngx_int_t ngx_http_qqflv_playback_handler(ngx_http_request_t *r);
 static void ngx_http_qqflv_playback_write_handler(ngx_http_request_t *r);
 static ngx_chain_t *ngx_http_qqflv_playback_prepare_out_chain(ngx_http_request_t *r, unsigned sourceflag);
 
-static u_char *ngx_http_qqflv_parse_block_data(ngx_buf_t *buf);
+static u_char *ngx_http_qqflv_parse_block(ngx_buf_t *buf, uint32_t blockid);
 static ngx_int_t ngx_http_qqflv_parse_range(ngx_http_request_t *r, u_char *skey);
 static ngx_chain_t * ngx_http_qqflv_create_chain_t(ngx_pool_t *pool, size_t size);
 
@@ -1916,7 +1916,7 @@ ngx_http_qqflv_piece_handler(ngx_http_request_t *r)
     printf("piece handler\n");
     size = ngx_http_qqflv_parse_range(r, "pieces=");
 
-    if (size == 0) {
+    if (size == 0 || size > NGX_QQFLV_MAX_BLOCK_SIZE) {
         return ngx_http_qqflv_send_response(r);
     }
 
@@ -1949,7 +1949,7 @@ ngx_http_qqflv_create_chain_t(ngx_pool_t *pool, size_t size)
     return chain;
 }
 
-static u_char *ngx_http_qqflv_parse_block_data(ngx_buf_t *buf)
+static u_char *ngx_http_qqflv_parse_block(ngx_buf_t *buf, uint32_t blockid)
 {
     u_char                                    *p;
     ngx_qq_flv_header_t                        qqflvhdr;
@@ -1973,6 +1973,9 @@ static u_char *ngx_http_qqflv_parse_block_data(ngx_buf_t *buf)
     READ_QQ_FLV_HEADER_FROM_BUFFER(qqflvhdr.uckeyframe);
     READ_QQ_FLV_HEADER_FROM_BUFFER(qqflvhdr.usec);
     READ_QQ_FLV_HEADER_FROM_BUFFER(qqflvhdr.useq);
+    if (qqflvhdr.useq != blockid) {
+        return NULL;
+    }
     READ_QQ_FLV_HEADER_FROM_BUFFER(qqflvhdr.usegid);
     READ_QQ_FLV_HEADER_FROM_BUFFER(qqflvhdr.ucheck);
 
@@ -1996,7 +1999,7 @@ static ngx_int_t ngx_http_qqflv_block_subrequest_done(ngx_http_request_t *r, voi
     if (ctx->type == NGX_HTTP_QQFLV_BLOCK) {
 
         for (ll = &ctx->out_chain; *ll; ll = &(*ll)->next);
-        if (r->headers_out.status == NGX_HTTP_OK && ngx_http_qqflv_parse_block_data(&r->upstream->buffer)) {
+        if (r->headers_out.status == NGX_HTTP_OK && ngx_http_qqflv_parse_block(&r->upstream->buffer, ctx->blockid)) {
             *ll = ngx_http_qqflv_create_chain_t(pr->pool, 0);
             (*ll)->buf = &r->upstream->buffer;            
         } else {
@@ -2009,7 +2012,7 @@ static ngx_int_t ngx_http_qqflv_block_subrequest_done(ngx_http_request_t *r, voi
 
     } else {
         if (r->headers_out.status == NGX_HTTP_OK) {
-            ctx->strBlock.data = ngx_http_qqflv_parse_block_data(&r->upstream->buffer);
+            ctx->strBlock.data = ngx_http_qqflv_parse_block(&r->upstream->buffer, ctx->blockid);
             if (ctx->strBlock.data) {
                 ctx->strBlock.len = r->upstream->buffer.last - ctx->strBlock.data;
             }
