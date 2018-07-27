@@ -12,7 +12,6 @@
 #include "ngx_rbuf.h"
 #include "ngx_http_set_header.h"
 #include "ngx_rtmp_monitor_module.h"
-#include "../qqflv/ngx_http_qqflv_module.h"
 
 
 static char *ngx_http_flv_live(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
@@ -257,10 +256,6 @@ ngx_http_flv_live_prepare_out_chain(ngx_http_request_t *r,
         return NULL;
     }
 
-    if (frame->hdr.qqhdrtype == NGX_RTMP_HEADER_TYPE_QQ_FLV) {
-        return ngx_http_qqflv_live_prepare_out_chain(r, s, frame, s->xHttpTrunk);
-    }
-
     /* fix timestamp */
     timestamp = frame->hdr.timestamp;
     timestamp = ngx_rtmp_timestamp_fix(s, timestamp, 0);
@@ -498,14 +493,13 @@ ngx_http_flv_live_send(ngx_event_t *wev)
     ngx_http_run_posted_requests(c);
 }
 
-/*
 static void
 ngx_http_flv_live_parse_url(ngx_http_request_t *r, ngx_str_t *app,
         ngx_str_t *name)
 {
     u_char                             *p, *end;
 
-    p = r->uri.data + 1;
+    p = r->uri.data + 1; /* skip '/' */
     end = r->uri.data + r->uri.len;
     app->data = p;
 
@@ -524,39 +518,13 @@ ngx_http_flv_live_parse_url(ngx_http_request_t *r, ngx_str_t *app,
     ++name->data;
     name->len = end - name->data;
 }
-*/
-
-static void
-ngx_http_flv_live_parse_url(ngx_http_request_t *r, ngx_str_t *app,
-        ngx_str_t *name)
-{
-    u_char                             *p, *end;
-
-	if(r->uri.len == 1) {
-		return;
-	}
-
-    p = r->uri.data + 1;
-    end = r->uri.data + r->uri.len;
-    app->data = p;
-
-    p = ngx_strlchr(p, end, '/');
-    if(p) {
-		/* app */
-		app->len = p - app->data;
-
-		/* name */
-		name->data = p + 1;
-		name->len = end - name->data;
-    }
-}
 
 static ngx_int_t
 ngx_http_flv_live_parse(ngx_http_request_t *r, ngx_rtmp_session_t *s,
         ngx_rtmp_play_t *v)
 {
     ngx_http_flv_live_loc_conf_t       *hflcf;
-    ngx_str_t                           app, stream, internal, xHttpTrunk;
+    ngx_str_t                           app, stream, internal;
     size_t                              tcurl_len;
     u_char                             *p;
 
@@ -584,18 +552,6 @@ ngx_http_flv_live_parse(ngx_http_request_t *r, ngx_rtmp_session_t *s,
             ngx_strncmp(internal.data, (u_char *)"1", internal.len) == 0)
         {
             s->back_source = 1;
-        }
-    }
-
-    //xHttpTrunk = 1
-    //s->xHttpTrunk = 0;
-    if (ngx_http_arg(r, (u_char *) "xHttpTrunk", sizeof("xHttpTrunk") - 1,
-                     &xHttpTrunk) == NGX_OK)
-    {
-        if (xHttpTrunk.len == sizeof("1") - 1 ||
-            ngx_strncmp(xHttpTrunk.data, (u_char *)"1", xHttpTrunk.len) == 0)
-        {
-            s->xHttpTrunk = 1;
         }
     }
 
