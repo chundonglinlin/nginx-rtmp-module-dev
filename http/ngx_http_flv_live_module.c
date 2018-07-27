@@ -493,13 +493,14 @@ ngx_http_flv_live_send(ngx_event_t *wev)
     ngx_http_run_posted_requests(c);
 }
 
+/*
 static void
 ngx_http_flv_live_parse_url(ngx_http_request_t *r, ngx_str_t *app,
         ngx_str_t *name)
 {
     u_char                             *p, *end;
 
-    p = r->uri.data + 1; /* skip '/' */
+    p = r->uri.data + 1;
     end = r->uri.data + r->uri.len;
     app->data = p;
 
@@ -517,6 +518,32 @@ ngx_http_flv_live_parse_url(ngx_http_request_t *r, ngx_str_t *app,
 
     ++name->data;
     name->len = end - name->data;
+}
+*/
+
+static void
+ngx_http_flv_live_parse_url(ngx_http_request_t *r, ngx_str_t *app,
+        ngx_str_t *name)
+{
+    u_char                             *p, *end;
+
+    if(r->uri.len == 1) {
+        return;
+    }
+
+    p = r->uri.data + 1;
+    end = r->uri.data + r->uri.len;
+    app->data = p;
+
+    p = ngx_strlchr(p, end, '/');
+    if(p) {
+        /* app */
+        app->len = p - app->data;
+
+        /* name */
+        name->data = p + 1;
+        name->len = end - name->data;
+    }
 }
 
 static ngx_int_t
