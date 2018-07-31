@@ -144,7 +144,7 @@ typedef struct {
     ngx_queue_t                     keyframe_queue;
     ngx_queue_t                     q;
     uint32_t                        current_time;
-
+    time_t                          headtimestamp;
     u_char                          meta_header[NGX_QQ_FLV_HEADER_SIZE];
     ngx_str_t                       meta_data;
 } ngx_qq_flv_index_t;
