@@ -1089,7 +1089,7 @@ ngx_http_qqflv_create_channel(ngx_str_t *channel_name, uint32_t backdelay,
     qq_flv_index->channel_name.len = channel_name->len;
 
     qq_flv_index->headtimestamp = 0;
-    qq_flv_index->current_time = 0;
+    qq_flv_index->current_time = ngx_time();
     qq_flv_index->meta_data.data = NULL;
     ngx_queue_init(&qq_flv_index->index_queue);
     ngx_queue_init(&qq_flv_index->keyframe_queue);
@@ -1169,23 +1169,17 @@ ngx_http_qqflv_insert_block_index(ngx_str_t channel_name, time_t timestamp,
         tq = ngx_queue_head(&qq_flv_index->index_queue);
         qq_flv_block_index = ngx_queue_data(tq, ngx_qq_flv_block_index_t, q);
         if (qq_flv_block_index) {
+            if (qq_flv_index->headtimestamp == 0) {
+                qq_flv_index->headtimestamp = qq_flv_block_index->timestamp;
+            }
+            else if (qq_flv_index->headtimestamp < qq_flv_block_index->timestamp) {
+                ngx_http_qqflv_delete_source_file(&qq_flv_index->channel_name, qq_flv_index->headtimestamp);
+                qq_flv_index->headtimestamp = qq_flv_block_index->timestamp;
+            }
             if (qq_flv_index->current_time >= qq_flv_block_index->qqflvhdr.usec &&
                 qq_flv_index->current_time - qq_flv_block_index->qqflvhdr.usec > qq_flv_index->backdelay)
             {
                 ngx_http_qqflv_delete_block_index(qq_flv_block_index); 
-            }
-
-
-            if (qq_flv_index->headtimestamp >= qq_flv_block_index->timestamp) {
-                ngx_http_qqflv_delete_block_index(qq_flv_block_index);                
-            } else if (qq_flv_index->current_time >= qq_flv_block_index->qqflvhdr.usec &&
-                qq_flv_index->current_time - qq_flv_block_index->qqflvhdr.usec > qq_flv_index->backdelay) 
-            {
-                ngx_http_qqflv_delete_block_index(qq_flv_block_index);
-                if (qq_flv_index->headtimestamp) {
-                    ngx_http_qqflv_delete_source_file(&qq_flv_index->channel_name, qq_flv_index->headtimestamp);
-                }
-                qq_flv_index->headtimestamp = qq_flv_block_index->timestamp;
             }
         }
     }
@@ -1395,6 +1389,10 @@ ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
         return NGX_OK;
     }
 
+    if (ngx_atoi(channel_name.data, channel_name.len) == -1) {
+        return NGX_OK;
+    }
+
     qq_flv_index = ngx_http_qqflv_find_channel(&channel_name);
     if (qq_flv_index == NULL) {
         //printf("create\n");
@@ -1403,15 +1401,14 @@ ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
         //return NGX_OK;
     }
 
-    
-
-    if (ngx_memcmp(left, ".index", last - left) != 0) {
+    if (ngx_time() - ngx_atoi(timestamp.data, timestamp.len) > qq_flv_index->backdelay) {
+        ngx_delete_file(path->data);
+        //ngx_http_qqflv_delete_source_file(&qq_flv_index->channel_name, 
+         //                                   (time_t)ngx_atoi(timestamp.data, timestamp.len));
         return NGX_OK;
     }
 
-    if (ngx_time() - ngx_atoi(timestamp.data, timestamp.len) > qq_flv_index->backdelay) {
-        ngx_http_qqflv_delete_source_file(&qq_flv_index->channel_name, 
-                                            (time_t)ngx_atoi(timestamp.data, timestamp.len));
+    if (ngx_memcmp(left, ".index", last - left) != 0) {
         return NGX_OK;
     }
 
