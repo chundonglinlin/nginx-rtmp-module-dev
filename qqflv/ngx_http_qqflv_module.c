@@ -1389,7 +1389,7 @@ ngx_http_qqflv_read_index_file(ngx_tree_ctx_t *ctx, ngx_str_t *path)
         return NGX_OK;
     }
 
-    if (ngx_atoi(channel_name.data, channel_name.len) == -1) {
+    if (ngx_atoi(channel_name.data, channel_name.len - 1) == -1) {
         return NGX_OK;
     }
 
