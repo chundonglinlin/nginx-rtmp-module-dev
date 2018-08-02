@@ -2491,12 +2491,5 @@ ngx_http_qqflv_postconfiguration(ngx_conf_t *cf)
 
     *h = ngx_http_qqflv_access_handler;
 
-    /*h = ngx_array_push(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
-    if (h == NULL) {
-        return NGX_ERROR;
-    }
-
-    *h = ngx_http_qqflv_content_handler;*/
-
     return NGX_OK;
 }
